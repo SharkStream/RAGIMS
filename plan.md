@@ -57,9 +57,9 @@ text
                            │
 ┌──────────────────────────▼──────────────────────────────┐
 │                       存储层                              │
-│  PostgreSQL：元数据、任务、版本、权限、配置               │
+│  Mysql：元数据、任务、版本、权限、配置               │
 │  Qdrant：向量 + payload                                   │
-│  MinIO/S3：原始文件、解析后文本、中间产物                  │
+│  MinIO：原始文件、解析后文本、中间产物                  │
 │  OpenSearch：全文索引                                     │
 │  Redis：缓存、队列、分布式锁                              │
 └─────────────────────────────────────────────────────────┘
@@ -78,7 +78,7 @@ text
 | 解析与清洗   | PDF、DOCX、PPTX、XLSX、HTML、MD、TXT                 | OCR、表格提取、版面分析、去噪去重          |
 | 切分与元数据 | 固定长度、递归字符、语义切分、父子块                 | chunk_size、overlap、标题/章节/页码        |
 | 向量化       | 调用 Embedding 模型                                  | 批处理、限流、重试、Token 统计、成本核算   |
-| 入库与索引   | 写入 Qdrant、OpenSearch、PostgreSQL                  | 版本化 upsert、payload 索引、全文索引      |
+| 入库与索引   | 写入 Qdrant、OpenSearch、MySQL                  | 版本化 upsert、payload 索引、全文索引      |
 | 版本与增量   | content_hash、doc_id、version                        | is_latest、is_deleted、valid_from/to、回滚 |
 | 权限与租户   | tenant_id、ACL、角色、用户                           | 检索强制过滤、权限变更即时生效             |
 | 任务调度     | DAG 编排、任务队列、重试、死信                       | 状态机、幂等、断点续传、优先级             |
@@ -88,7 +88,10 @@ text
 
 ------
 
-# 四、数据库表设计（PostgreSQL 元数据）
+# 四、数据库表设计（MySQL 元数据）
+
+> MVP（阶段 B）只建 9 张必需表；标注「延后」的 6 张不进 MVP 迁移。
+> 类型说明：MySQL 8 用 `JSON`（对应 PostgreSQL 的 `JSONB`）；UUID 主键 MVP 用 `CHAR(36)`。
 
 ## 4.1 租户与用户
 
@@ -99,7 +102,8 @@ tenants (
   id UUID PK,
   name VARCHAR,
   status VARCHAR,
-  created_at TIMESTAMP
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 )
 
 users (
@@ -109,7 +113,8 @@ users (
   email VARCHAR,
   role VARCHAR,
   status VARCHAR,
-  created_at TIMESTAMP
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 )
 ```
 
@@ -125,12 +130,13 @@ datasources (
   tenant_id UUID FK,
   name VARCHAR,
   type VARCHAR,          -- local, s3, sharepoint, confluence, notion, feishu
-  config JSONB,
+  config JSON,
   sync_mode VARCHAR,     -- manual, cron, webhook
   sync_cron VARCHAR,
   last_sync_at TIMESTAMP,
   status VARCHAR,
-  created_at TIMESTAMP
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
 )
 ```
 
@@ -154,7 +160,7 @@ documents (
   department VARCHAR,
   document_type VARCHAR,
   access_level VARCHAR,
-  tags JSONB,
+  tags JSON,
   current_version INT,
   status VARCHAR,        -- active, deleted, processing, failed
   created_at TIMESTAMP,
@@ -199,7 +205,7 @@ chunks (
   page INT,
   section VARCHAR,
   qdrant_point_id VARCHAR,
-  metadata JSONB,
+  metadata JSON,
   created_at TIMESTAMP
 )
 ```
@@ -220,6 +226,7 @@ ingestion_jobs (
   status VARCHAR,        -- pending, running, success, failed, cancelled
   priority INT,
   created_by UUID,
+  celery_task_id VARCHAR,
   created_at TIMESTAMP,
   started_at TIMESTAMP,
   finished_at TIMESTAMP,
@@ -229,11 +236,12 @@ ingestion_jobs (
 job_steps (
   id UUID PK,
   job_id UUID FK,
+  step_order INT,
   step_name VARCHAR,     -- download, parse, clean, chunk, embed, upsert, index, quality, switch
   status VARCHAR,
   retry_count INT,
-  input JSONB,
-  output JSONB,
+  input JSON,
+  output JSON,
   started_at TIMESTAMP,
   finished_at TIMESTAMP,
   error_message TEXT
@@ -242,7 +250,7 @@ job_steps (
 
 
 
-## 4.6 配置表
+## 4.6 配置表（embedding_models MVP 必需；其余延后）
 
 sql
 
@@ -253,36 +261,36 @@ embedding_models (
   provider VARCHAR,
   model_name VARCHAR,
   dimension INT,
-  config JSONB,
+  config JSON,
   is_default BOOLEAN
 )
 
-chunking_strategies (
+chunking_strategies (  -- 延后（MVP 硬编码固定切分）
   id UUID PK,
   name VARCHAR,
   type VARCHAR,
-  config JSONB,
+  config JSON,
   is_default BOOLEAN
 )
 
-parsers (
+parsers (  -- 延后（MVP 硬编码解析器）
   id UUID PK,
   name VARCHAR,
   file_type VARCHAR,
   parser_class VARCHAR,
-  config JSONB,
+  config JSON,
   is_default BOOLEAN
 )
 ```
 
 
 
-## 4.7 权限与审计
+## 4.7 权限与审计（延后：阶段 3）
 
 sql
 
 ```
-permissions (
+permissions (  -- 延后（阶段 3 多租户/ACL）
   id UUID PK,
   tenant_id UUID FK,
   resource_type VARCHAR,
@@ -292,46 +300,63 @@ permissions (
   access_level VARCHAR
 )
 
-audit_logs (
+audit_logs (  -- 延后（阶段 3 审计）
   id UUID PK,
   tenant_id UUID FK,
   user_id UUID,
   action VARCHAR,
   resource_type VARCHAR,
   resource_id UUID,
-  detail JSONB,
+  detail JSON,
   created_at TIMESTAMP
 )
 ```
 
 
 
-## 4.8 质量与评估
+## 4.8 质量与评估（延后：阶段 4）
 
 sql
 
 ```
-evaluation_runs (
+evaluation_runs (  -- 延后（阶段 4 质量评估）
   id UUID PK,
   tenant_id UUID FK,
   name VARCHAR,
-  dataset JSONB,
-  metrics JSONB,
-  result JSONB,
+  dataset JSON,
+  metrics JSON,
+  result JSON,
   created_at TIMESTAMP
 )
 
-quality_checks (
+quality_checks (  -- 延后（阶段 4 质量评估）
   id UUID PK,
   doc_version_id UUID FK,
   check_type VARCHAR,
   score FLOAT,
-  detail JSONB,
+  detail JSON,
   created_at TIMESTAMP
 )
 ```
 
 
+
+------
+
+## 4.9 索引（MVP 必需）
+
+> MySQL/InnoDB 对 FK 列自动建索引，以下只列需手动补充的复合/唯一索引。
+
+| 表 | 索引 | 用途 |
+| :--- | :--- | :--- |
+| documents | `(tenant_id, status)` | 文档列表过滤分页 |
+| document_versions | UNIQUE `(doc_id, content_hash)` | 幂等去重 |
+| chunks | `(doc_version_id, chunk_index)` | 按版本有序取 chunk |
+| chunks | `(doc_id)` | 按文档取 chunk |
+| ingestion_jobs | `(tenant_id, status)` | 任务列表过滤 |
+| job_steps | `(job_id, step_order)` | 步骤时间线 |
+
+> 延后（MVP 非必需）：`chunks(qdrant_point_id)`、`documents(tenant_id, external_id)` 唯一、`created_at` 降序。
 
 ------
 
@@ -455,7 +480,7 @@ pending → running → success
 | 前端      | React + Ant Design Pro                 |
 | 元数据库  | MYSQL                                  |
 | 向量库    | Qdrant                                 |
-| 对象存储  | MinIO / S3 / OSS                       |
+| 对象存储  | MinIO                                  |
 | 全文索引  | OpenSearch                             |
 | 缓存/队列 | Redis                                  |
 | 监控      | Prometheus + Grafana + Loki            |
@@ -602,7 +627,7 @@ pending → running → success
 3. 固定长度切分。
 4. 调用 OpenAI Embedding。
 5. 写入 Qdrant，payload 带 `doc_id`、`version`、`is_latest`、`tenant_id`、`access_level`。
-6. 元数据写入 PostgreSQL。
+6. 元数据写入 MySql。
 7. 管理界面：文档列表、任务状态、Chunk 预览、检索测试。
 8. 任务队列：Celery + Redis。
 
