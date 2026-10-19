@@ -1,0 +1,31 @@
+# Generated from pyproject.toml (Poetry) — for reproducible installs prefer:
+#   poetry install            (locked)  or  pip install -r requirements.txt
+# This file pins minimum versions; the authoritative lock is poetry.lock.
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sqlalchemy>=2.0.30
+alembic>=1.13.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+celery>=5.4.0
+redis>=5.0.0
+pymysql>=1.1.0
+cryptography>=42.0.0
+minio>=7.2.0
+qdrant-client>=1.10.0
+openai>=1.40.0
+pymupdf>=1.24.0
+python-docx>=1.1.0
+chardet>=5.2.0
+tiktoken>=0.7.0
+loguru>=0.7.0
+python-multipart>=0.0.9
+
+# --- dev ---
+ruff>=0.5.0
+black>=24.0.0
+mypy>=1.10.0
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pre-commit>=3.7.0
