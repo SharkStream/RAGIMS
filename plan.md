@@ -91,7 +91,7 @@ text
 # 四、数据库表设计（MySQL 元数据）
 
 > MVP（阶段 B）只建 9 张必需表；标注「延后」的 6 张不进 MVP 迁移。
-> 类型说明：MySQL 8 用 `JSON`（对应 PostgreSQL 的 `JSONB`）；UUID 主键 MVP 用 `CHAR(36)`。
+> 类型说明：MySQL 8 用 `JSON`（对应 PostgreSQL 的 `JSONB`）；UUID 主键 MVP 用 `CHAR(36)`；时间列统一 `DATETIME(3)`（B1 决议，应用层写 UTC），完整 DDL 见 `docs/db-schema.md`。
 
 ## 4.1 租户与用户
 

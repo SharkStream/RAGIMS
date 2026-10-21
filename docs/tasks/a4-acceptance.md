@@ -4,7 +4,6 @@
 
 ## 验收清单
 
-- [ ] `docker compose up` 一键拉起全部依赖（MySQL/Redis/Qdrant/MinIO/backend/worker/flower）。
 - [ ] 访问 `/docs` 与 `/healthz` 正常返回。
 - [ ] CI（GitHub Actions 最小流水线）能跑通 lint + 单测。
 - [ ] 后端目录分层、统一日志、统一配置、pre-commit 全部就位。

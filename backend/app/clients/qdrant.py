@@ -14,11 +14,19 @@ from app.core.config import settings
 COLLECTION_NAME = "documents"
 
 
-def build_client() -> QdrantClient:
-    """Create a QdrantClient from settings (REST transport)."""
+def build_client(timeout: int | None = None) -> QdrantClient:
+    """Create a QdrantClient from settings (REST transport).
+
+    ``timeout`` caps request time in seconds — pass a small value for probes
+    (e.g. the /readyz readiness check); omit it for normal pipeline use.
+    """
     if settings.qdrant.api_key:
-        return QdrantClient(url=settings.qdrant.url, api_key=settings.qdrant.api_key)
-    return QdrantClient(host=settings.qdrant.host, port=settings.qdrant.port)
+        return QdrantClient(
+            url=settings.qdrant.url, api_key=settings.qdrant.api_key, timeout=timeout
+        )
+    return QdrantClient(
+        host=settings.qdrant.host, port=settings.qdrant.port, timeout=timeout
+    )
 
 
 def ensure_collection(

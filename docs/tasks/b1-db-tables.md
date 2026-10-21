@@ -28,8 +28,14 @@
 
 ## 验收标准
 
-- [ ] 9 张表字段清单与 `plan.md` 第四节一致，延后 6 张已排除。
-- [ ] 字段类型已按 MySQL 语义（`JSON`、`CHAR(36)`、`DATETIME`）明确。
+- [x] 9 张表字段清单与 `plan.md` 第四节一致，延后 6 张已排除。
+- [x] 字段类型已按 MySQL 语义（`JSON`、`CHAR(36)`、`DATETIME(3)`）明确。
+
+## 产出物（B1 完成）
+
+- **[docs/db-schema.md](../db-schema.md)** — 9 张表完整 MySQL 8 DDL（FK 拓扑序）+ 通用约定 + 索引说明 + 种子数据定义，作为 B2 建模输入。
+- 关键类型决议：时间列 `DATETIME(3)`（应用层写 UTC，替代 TIMESTAMP）、哈希列 `CHAR(64)`、`chunks.text` 用 `MEDIUMTEXT`、JSON 列可空、状态列不加 `CHECK`（枚举由应用层校验）、FK 全部 `ON DELETE RESTRICT`。
+- 索引基线与 plan.md §4.9 一致（6 个复合/唯一索引 + FK 自动索引，不重复建）；增补 `users UNIQUE(tenant_id, username)` 与 `embedding_models UNIQUE(provider, model_name)`。
 
 ## 关联任务
 

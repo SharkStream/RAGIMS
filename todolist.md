@@ -41,11 +41,11 @@
 - [ ] `.env.example` 覆盖全部配置项并注释
 
 ### A3. FastAPI 骨架
-- [ ] `main.py` 启动、CORS、路由注册、异常处理器
-- [ ] `/healthz`、`/readyz` 健康检查
-- [ ] OpenAPI 自动文档（`/docs`）确认可访问
-- [ ] 统一响应结构（`code/message/data`）与分页规范
-- [ ] 全局依赖：DB session、当前用户（MVP 可先固定租户/用户）
+- [x] `main.py` 启动、CORS、路由注册、异常处理器
+- [x] `/healthz`、`/readyz` 健康检查
+- [x] OpenAPI 自动文档（`/docs`）确认可访问
+- [x] 统一响应结构（`code/message/data`）与分页规范
+- [x] 全局依赖：DB session、当前用户（MVP 可先固定租户/用户）
 
 ### A4. 验收标准
 - [ ] `docker compose up` 一键拉起全部依赖
@@ -57,24 +57,24 @@
 ## B. 数据模型与存储层（2-3 天）
 
 ### B1. 数据库表（MVP 子集）
-> 只建 MVP 必需表（9 张）；plan.md 第四节标注「延后」的 6 张（chunking_strategies / parsers / permissions / audit_logs / evaluation_runs / quality_checks）不建。版本/权限相关字段先留位。
+> 只建 MVP 必需表（9 张）；plan.md 第四节标注「延后」的 6 张（chunking_strategies / parsers / permissions / audit_logs / evaluation_runs / quality_checks）不建。版本/权限相关字段先留位。表结构定义见 `docs/db-schema.md`。
 
-- [ ] `tenants`（MVP 预置一条默认租户）
-- [ ] `users`（MVP 预置默认管理员）
-- [ ] `datasources`（MVP 只实现 `local` 类型）
-- [ ] `documents`（含 `tenant_id`、`status`、`current_version`）
-- [ ] `document_versions`（含 `content_hash`、`parse_status`、`chunk_count`、`is_latest`、`is_deleted`、`file_path`）
-- [ ] `chunks`（含 `doc_version_id`、`chunk_index`、`text`、`token_count`、`chunk_hash`、`qdrant_point_id`、`metadata`）
-- [ ] `ingestion_jobs`（含 `job_type`、`status`、`priority`、`celery_task_id`、时间戳、`error_message`）
-- [ ] `job_steps`（含 `step_name`、`step_order`、`status`、`retry_count`、`input/output`、时间戳）
-- [ ] `embedding_models`（预置 OpenAI `text-embedding-3-small` 一条默认配置）
+- [x] `tenants`（MVP 预置一条默认租户）
+- [x] `users`（MVP 预置默认管理员）
+- [x] `datasources`（MVP 只实现 `local` 类型）
+- [x] `documents`（含 `tenant_id`、`status`、`current_version`）
+- [x] `document_versions`（含 `content_hash`、`parse_status`、`chunk_count`、`is_latest`、`is_deleted`、`file_path`）
+- [x] `chunks`（含 `doc_version_id`、`chunk_index`、`text`、`token_count`、`chunk_hash`、`qdrant_point_id`、`metadata`）
+- [x] `ingestion_jobs`（含 `job_type`、`status`、`priority`、`celery_task_id`、时间戳、`error_message`）
+- [x] `job_steps`（含 `step_name`、`step_order`、`status`、`retry_count`、`input/output`、时间戳）
+- [x] `embedding_models`（预置 OpenAI `text-embedding-3-small` 一条默认配置）
 
 ### B2. ORM 与迁移
-- [ ] SQLAlchemy 2.0 模型定义（UUID 主键 `CHAR(36)`、时间戳 mixin、JSON 列用 MySQL `JSON`）
-- [ ] Alembic 初始化，生成首版迁移
-- [ ] `created_at/updated_at` 自动维护
-- [ ] 关键索引：`documents(tenant_id, status)`、`document_versions UNIQUE(doc_id, content_hash)`、`chunks(doc_version_id, chunk_index)`、`chunks(doc_id)`、`ingestion_jobs(tenant_id, status)`、`job_steps(job_id, step_order)`（FK 列 InnoDB 自动建索引，无需重复建）
-- [ ] 种子脚本：默认租户、用户、embedding 模型配置
+- [x] SQLAlchemy 2.0 模型定义（UUID 主键 `CHAR(36)`、时间戳 mixin、JSON 列用 MySQL `JSON`）
+- [x] Alembic 初始化，生成首版迁移
+- [x] `created_at/updated_at` 自动维护
+- [x] 关键索引：`documents(tenant_id, status)`、`document_versions UNIQUE(doc_id, content_hash)`、`chunks(doc_version_id, chunk_index)`、`chunks(doc_id)`、`ingestion_jobs(tenant_id, status)`、`job_steps(job_id, step_order)`（FK 列 InnoDB 自动建索引，无需重复建）
+- [x] 种子脚本：默认租户、用户、embedding 模型配置
 
 ### B3. 存储层封装
 - [ ] MinIO 客户端封装：`upload_file`、`download_file`、`generate_presigned_url`、`delete_object`

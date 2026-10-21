@@ -4,12 +4,19 @@
 default handler, installs a JSON console sink and an optional rotating file sink,
 and routes the stdlib ``logging`` stream (uvicorn, sqlalchemy, celery, ...) through
 loguru so every record shares the same structured format.
+
+Sinks deliberately run with ``enqueue=False``: loguru handlers are already
+thread-safe in-process, ``enqueue=True`` adds a ``multiprocessing.SimpleQueue``
+(creates a named pipe on Windows, hangs some test runners at exit, and breaks
+under sandboxed environments). Celery workers are separate processes that call
+``setup_logging()`` themselves, so cross-process safety is not needed here.
 """
 
 from __future__ import annotations
 
 import logging
 import sys
+import types
 from pathlib import Path
 
 from loguru import logger
@@ -27,12 +34,14 @@ class InterceptHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         # Map stdlib level name to loguru level number.
+        level: str | int
         try:
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
 
         # Walk up the call stack to find the caller's frame (outside logging).
+        frame: types.FrameType | None
         frame, depth = logging.currentframe(), 2
         while frame is not None and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
@@ -62,7 +71,7 @@ def setup_logging(
             sys.stderr,
             level=level,
             serialize=True,
-            enqueue=True,
+            enqueue=False,
             backtrace=True,
             diagnose=False,
         )
@@ -71,25 +80,31 @@ def setup_logging(
             sys.stderr,
             level=level,
             format=_LOG_FORMAT,
-            enqueue=True,
+            enqueue=False,
             backtrace=True,
             diagnose=False,
         )
 
     if log_dir is not None:
-        path = Path(log_dir)
-        path.mkdir(parents=True, exist_ok=True)
-        logger.add(
-            path / "ragims_{time:YYYY-MM-DD}.log",
-            level=level,
-            serialize=True,
-            rotation="00:00",
-            retention="14 days",
-            compression="gz",
-            enqueue=True,
-            backtrace=True,
-            diagnose=False,
-        )
+        # Never let an unwritable log directory kill the process (read-only
+        # filesystems, sandboxed CI, permission mistakes): the console sink
+        # above already covers observability. Best-effort only.
+        try:
+            path = Path(log_dir)
+            path.mkdir(parents=True, exist_ok=True)
+            logger.add(
+                path / "ragims_{time:YYYY-MM-DD}.log",
+                level=level,
+                serialize=True,
+                rotation="00:00",
+                retention="14 days",
+                compression="gz",
+                enqueue=False,
+                backtrace=True,
+                diagnose=False,
+            )
+        except OSError as exc:
+            logger.warning("File logging disabled ({}: {})", type(exc).__name__, exc)
 
     # Route stdlib loggers through loguru so third-party logs stay structured.
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
