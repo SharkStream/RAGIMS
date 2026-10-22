@@ -119,8 +119,8 @@
 ## D. 解析、清洗、切分模块（4-5 天）
 
 ### D1. 解析器抽象
-- [ ] 定义 `BaseParser` 接口：`parse(file_path) -> ParsedDocument{text, blocks, metadata}`
-- [ ] 解析器注册表：按 `file_type` 分派
+- [x] 定义 `BaseParser` 接口：`parse(file_path) -> ParsedDocument{text, blocks, metadata}`
+- [x] 解析器注册表：按 `file_type` 分派
 
 ### D2. 各格式解析器
 - [ ] **PDF**：`pymupdf`（优先）或 `pdfplumber`，提取文本 + 页码 + 基本元数据
