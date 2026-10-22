@@ -39,6 +39,9 @@ class AppSettings(BaseModel):
     api_prefix: str = "/api"
     # Upload guard (C1): reject files larger than this many megabytes.
     upload_max_mb: int = 50
+    # Fixed-token chunking defaults (D4): no chunking_strategies table in MVP.
+    chunk_size: int = 512
+    chunk_overlap: int = 50
     # JSON array in env, e.g. APP__CORS_ORIGINS='["http://localhost:5173"]'
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"]
