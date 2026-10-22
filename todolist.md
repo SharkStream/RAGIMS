@@ -123,11 +123,11 @@
 - [x] 解析器注册表：按 `file_type` 分派
 
 ### D2. 各格式解析器
-- [ ] **PDF**：`pymupdf`（优先）或 `pdfplumber`，提取文本 + 页码 + 基本元数据
-- [ ] **DOCX**：`python-docx`，提取段落 + 表格（表格转 markdown/文本）
-- [ ] **TXT**：直接读取（编码探测，`chardet`）
-- [ ] 解析结果统一落 MinIO（`parsed-text/{doc_version_id}.json`）
-- [ ] 解析失败写入 `document_versions.parse_status=failed` + `job_steps.error_message`
+- [x] **PDF**：`pymupdf`（优先）或 `pdfplumber`，提取文本 + 页码 + 基本元数据
+- [x] **DOCX**：`python-docx`，提取段落 + 表格（表格转 markdown/文本）
+- [x] **TXT**：直接读取（编码探测，`chardet`）
+- [x] 解析结果统一落 MinIO（`parsed-text/{doc_version_id}.json`）
+- [x] 解析失败写入 `document_versions.parse_status=failed` + `job_steps.error_message`
 
 ### D3. 清洗
 - [ ] 去噪：多余空白、页眉页脚重复行、控制字符

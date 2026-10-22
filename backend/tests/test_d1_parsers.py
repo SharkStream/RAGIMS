@@ -12,8 +12,6 @@ Run from ``backend/``::
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from app.parsers import registry
 from app.parsers.base import (
@@ -60,10 +58,10 @@ def test_base_parser_is_abstract() -> None:
         BaseParser()  # type: ignore[abstract]
 
     class Noop(BaseParser):
-        def parse(self, file_path: str | Path) -> ParsedDocument:
+        def parse_bytes(self, data: bytes) -> ParsedDocument:
             return ParsedDocument(text="ok")
 
-    assert Noop().parse(Path("x")).text == "ok"
+    assert Noop().parse_bytes(b"x").text == "ok"
 
 
 def test_supported_types_match_b1_domain() -> None:
@@ -76,24 +74,29 @@ def test_supported_types_match_b1_domain() -> None:
 
 
 class _FakePdf(BaseParser):
-    def parse(self, file_path: str | Path) -> ParsedDocument:
+    def parse_bytes(self, data: bytes) -> ParsedDocument:
         return ParsedDocument(text="pdf-fake")
 
 
 class _FakeDocx(BaseParser):
-    def parse(self, file_path: str | Path) -> ParsedDocument:
+    def parse_bytes(self, data: bytes) -> ParsedDocument:
         return ParsedDocument(text="docx-fake")
 
 
 class _FakeTxt(BaseParser):
-    def parse(self, file_path: str | Path) -> ParsedDocument:
+    def parse_bytes(self, data: bytes) -> ParsedDocument:
         return ParsedDocument(text="txt-fake")
 
 
 @pytest.fixture()
 def clean_registry():
-    """Snapshot & restore the global registry around each test."""
+    """Empty the global registry for the test, restore the snapshot after.
+
+    D2's real parsers self-register at collection time (import side effect);
+    the mechanism tests below need a clean slate and must never leak fakes.
+    """
     snapshot = dict(registry._REGISTRY)
+    registry._REGISTRY.clear()
     yield registry._REGISTRY
     registry._REGISTRY.clear()
     registry._REGISTRY.update(snapshot)

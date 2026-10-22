@@ -56,11 +56,20 @@ class ParsedDocument:
 
 
 class BaseParser(ABC):
-    """Interface every concrete parser implements (D1 step 2)."""
+    """Interface every concrete parser implements (D1 step 2, refined in D2).
+
+    ``parse`` is the file-based entry the pipeline uses; ``parse_bytes`` is
+    the in-memory core (parsers never touch the filesystem beyond this one
+    read — this keeps them unit-testable without fixture files on disk).
+    """
+
+    def parse(self, file_path: str | Path) -> ParsedDocument:
+        """Read the file at ``file_path`` and return a :class:`ParsedDocument`."""
+        return self.parse_bytes(Path(file_path).read_bytes())
 
     @abstractmethod
-    def parse(self, file_path: str | Path) -> ParsedDocument:
-        """Read the file at ``file_path`` and return a :class:`ParsedDocument`.
+    def parse_bytes(self, data: bytes) -> ParsedDocument:
+        """Parse raw file bytes into a :class:`ParsedDocument`.
 
         Implementations must be side-effect-free; raise a plain exception on
         failure — the pipeline (D2 step 5) maps failures to
