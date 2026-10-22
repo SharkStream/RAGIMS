@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.deps import DEFAULT_TENANT_ID, DEFAULT_USER_ID
 from app.core.logging import setup_logging
-from app.models import EmbeddingModel, Tenant, User
+from app.models import Datasource, EmbeddingModel, Tenant, User
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -97,6 +97,23 @@ def seed_embedding_model(session: Session) -> EmbeddingModel:
     return model
 
 
+def seed_default_datasource(session: Session, tenant_id: str) -> Datasource:
+    """Return the tenant's ``default`` local datasource, creating if missing (C3)."""
+    ds = session.scalars(
+        select(Datasource).where(
+            Datasource.tenant_id == tenant_id, Datasource.name == "default"
+        )
+    ).one_or_none()
+    if ds is not None:
+        print(f"= default datasource exists: {ds.id} ({ds.type})")
+        return ds
+    ds = Datasource(tenant_id=tenant_id, name="default", type="local")
+    session.add(ds)
+    session.flush()
+    print(f"+ default datasource created: {ds.id} (local)")
+    return ds
+
+
 def main() -> None:
     """Seed all preset rows in one transaction; commit only on full success."""
     session = SessionLocal()
@@ -104,6 +121,7 @@ def main() -> None:
         tenant = seed_tenant(session)
         seed_admin_user(session, tenant.id)
         seed_embedding_model(session)
+        seed_default_datasource(session, tenant.id)
         session.commit()
     except Exception:
         session.rollback()

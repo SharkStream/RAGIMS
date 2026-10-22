@@ -14,6 +14,8 @@ Business routers mount here under ``settings.app.api_prefix`` as later tasks
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.datasources import router as datasources_router
+from app.api.documents import router as documents_router
 from app.api.health import router as health_router
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
@@ -42,6 +44,8 @@ app.add_middleware(
 # Infrastructure endpoints stay at the root so probes never move when the
 # business API prefix changes.
 app.include_router(health_router)
+app.include_router(documents_router, prefix=settings.app.api_prefix)
+app.include_router(datasources_router, prefix=settings.app.api_prefix)
 
 # Unified error envelope for every route registered above and below.
 register_exception_handlers(app)

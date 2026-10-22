@@ -37,6 +37,8 @@ class AppSettings(BaseModel):
     debug: bool = True
     log_level: str = "INFO"
     api_prefix: str = "/api"
+    # Upload guard (C1): reject files larger than this many megabytes.
+    upload_max_mb: int = 50
     # JSON array in env, e.g. APP__CORS_ORIGINS='["http://localhost:5173"]'
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"]

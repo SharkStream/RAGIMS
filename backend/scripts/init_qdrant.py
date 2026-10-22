@@ -13,7 +13,7 @@ Requires a configured environment (OPENAI__API_KEY, QDRANT__*) — see
 
 from __future__ import annotations
 
-from app.clients.qdrant import ensure_collection
+from app.clients.qdrant_client import QdrantVectorStore
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -21,7 +21,7 @@ setup_logging(level=settings.app.log_level)
 
 
 def main() -> None:
-    name = ensure_collection()
+    name = QdrantVectorStore().ensure_collection()
     print(
         f"Qdrant collection '{name}' ready "
         f"(dimension={settings.openai.embedding_dimension}, distance=COSINE)"

@@ -1,55 +1,34 @@
-"""Qdrant client wrapper.
+"""Deprecated compatibility shim — implementation moved to :mod:`app.clients.qdrant_client`.
 
-Exposes a single idempotent ``ensure_collection()`` used by the ingestion
-pipeline (reused in B3) and by ``scripts/init_qdrant.py`` for one-off setup.
+B3 renamed the module to ``qdrant_client.py`` and grew the full vector-store
+facade. This shim keeps any external import path alive; prefer importing from
+``app.clients.qdrant_client`` in new code.
 """
 
 from __future__ import annotations
 
-from qdrant_client import QdrantClient
-from qdrant_client.http import models as qmodels
+from app.clients.qdrant_client import (
+    COLLECTION_NAME as COLLECTION_NAME,
+)
+from app.clients.qdrant_client import (
+    QdrantVectorStore as QdrantVectorStore,
+)
+from app.clients.qdrant_client import (
+    build_client as build_client,
+)
+from app.clients.qdrant_client import (
+    chunk_point_id as chunk_point_id,
+)
 
-from app.core.config import settings
-
-COLLECTION_NAME = "documents"
-
-
-def build_client(timeout: int | None = None) -> QdrantClient:
-    """Create a QdrantClient from settings (REST transport).
-
-    ``timeout`` caps request time in seconds — pass a small value for probes
-    (e.g. the /readyz readiness check); omit it for normal pipeline use.
-    """
-    if settings.qdrant.api_key:
-        return QdrantClient(
-            url=settings.qdrant.url, api_key=settings.qdrant.api_key, timeout=timeout
-        )
-    return QdrantClient(
-        host=settings.qdrant.host, port=settings.qdrant.port, timeout=timeout
-    )
+__all__ = ["COLLECTION_NAME", "QdrantVectorStore", "build_client", "chunk_point_id"]
 
 
 def ensure_collection(
-    client: QdrantClient | None = None,
+    client: QdrantVectorStore | None = None,
     *,
     name: str = COLLECTION_NAME,
     dimension: int | None = None,
 ) -> str:
-    """Create the collection if it does not exist; return its name.
-
-    Dimension defaults to the configured embedding model dimension
-    (OpenAI ``text-embedding-3-small`` -> 1536) with COSINE distance.
-    Idempotent: repeated calls are a no-op once the collection exists.
-    """
-    dimension = dimension or settings.openai.embedding_dimension
-    client = client or build_client()
-
-    if not client.collection_exists(name):
-        client.create_collection(
-            collection_name=name,
-            vectors_config=qmodels.VectorParams(
-                size=dimension,
-                distance=qmodels.Distance.COSINE,
-            ),
-        )
-    return name
+    """Backwards-compatible module-level wrapper (A2 signature)."""
+    store = client or QdrantVectorStore()
+    return store.ensure_collection(name, dimension)

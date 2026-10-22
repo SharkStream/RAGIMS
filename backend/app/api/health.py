@@ -60,7 +60,7 @@ def _probe_redis() -> str:
 
 
 def _probe_qdrant() -> str:
-    from app.clients.qdrant import build_client
+    from app.clients.qdrant_client import build_client
 
     client = build_client(timeout=_PROBE_TIMEOUT)
     client.get_collections()  # cheapest authenticated request

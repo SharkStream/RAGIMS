@@ -77,42 +77,42 @@
 - [x] 种子脚本：默认租户、用户、embedding 模型配置
 
 ### B3. 存储层封装
-- [ ] MinIO 客户端封装：`upload_file`、`download_file`、`generate_presigned_url`、`delete_object`
-- [ ] Qdrant 客户端封装：`ensure_collection`、`upsert_points`、`delete_by_filter`、`search`
-- [ ] 统一 `StorageService`，便于替换实现
+- [x] MinIO 客户端封装：`upload_file`、`download_file`、`generate_presigned_url`、`delete_object`
+- [x] Qdrant 客户端封装：`ensure_collection`、`upsert_points`、`delete_by_filter`、`search`
+- [x] 统一 `StorageService`，便于替换实现
 
 ### B4. 验收标准
-- [ ] `alembic upgrade head` 一键建表
-- [ ] 种子脚本可重复执行（幂等）
-- [ ] 单测覆盖 Storage 封装（用 MinIO/Qdrant 容器或 mock）
+- [x] `alembic upgrade head` 一键建表
+- [x] 种子脚本可重复执行（幂等）
+- [x] 单测覆盖 Storage 封装（用 MinIO/Qdrant 容器或 mock）
 
 ---
 
 ## C. 文档上传与元数据 API（3-4 天）
 
 ### C1. 上传接口
-- [ ] `POST /documents/upload`：multipart 上传，校验文件类型（pdf/docx/txt）与大小上限
-- [ ] 计算 `content_hash`（SHA256）
-- [ ] 上传原始文件到 MinIO（`raw-docs/{tenant_id}/{doc_id}/{version}/{filename}`）
-- [ ] 创建 `documents` + `document_versions`（`version=1`、`is_latest=true`、`status=processing`）
-- [ ] 创建 `ingestion_jobs`（`job_type=full`、`status=pending`）并投递 Celery 任务
-- [ ] 幂等：相同 `content_hash` 已存在时，返回已有 doc（或提示跳过）
+- [x] `POST /documents/upload`：multipart 上传，校验文件类型（pdf/docx/txt）与大小上限
+- [x] 计算 `content_hash`（SHA256）
+- [x] 上传原始文件到 MinIO（`raw-docs/{tenant_id}/{doc_id}/{version}/{filename}`）
+- [x] 创建 `documents` + `document_versions`（`version=1`、`is_latest=true`、`status=processing`）
+- [x] 创建 `ingestion_jobs`（`job_type=full`、`status=pending`）并投递 Celery 任务
+- [x] 幂等：相同 `content_hash` 已存在时，返回已有 doc（或提示跳过）
 
 ### C2. 文档查询接口
-- [ ] `GET /documents`：分页、按 `tenant_id`/`status`/`file_type` 过滤、关键字搜索标题
-- [ ] `GET /documents/{id}`：返回文档详情 + 最新版本信息
-- [ ] `GET /documents/{id}/chunks`：分页返回 chunk 列表（含 `text`、`chunk_index`、`token_count`、`page`）
-- [ ] `DELETE /documents/{id}`：MVP 做软删除（`documents.status=deleted`，异步清理可延后）
+- [x] `GET /documents`：分页、按 `tenant_id`/`status`/`file_type` 过滤、关键字搜索标题
+- [x] `GET /documents/{id}`：返回文档详情 + 最新版本信息
+- [x] `GET /documents/{id}/chunks`：分页返回 chunk 列表（含 `text`、`chunk_index`、`token_count`、`page`）
+- [x] `DELETE /documents/{id}`：MVP 做软删除（`documents.status=deleted`，异步清理可延后）
 
 ### C3. 数据源接口（MVP 最小）
-- [ ] `GET /datasources`、`POST /datasources`（仅 `type=local`，占位）
-- [ ] 上传时自动关联默认 datasource（或允许指定 `datasource_id`）
+- [x] `GET /datasources`、`POST /datasources`（仅 `type=local`，占位）
+- [x] 上传时自动关联默认 datasource（或允许指定 `datasource_id`）
 
 ### C4. 验收标准
-- [ ] 上传 PDF/DOCX/TXT 均成功落库 + 落 MinIO
-- [ ] 上传后能查到 `documents`、`document_versions`、`ingestion_jobs` 记录
-- [ ] 重复上传相同文件触发幂等逻辑
-- [ ] 接口有 Pydantic schema 校验与错误码
+- [x] 上传 PDF/DOCX/TXT 均成功落库 + 落 MinIO
+- [x] 上传后能查到 `documents`、`document_versions`、`ingestion_jobs` 记录
+- [x] 重复上传相同文件触发幂等逻辑
+- [x] 接口有 Pydantic schema 校验与错误码
 
 ---
 

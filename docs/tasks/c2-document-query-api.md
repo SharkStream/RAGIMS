@@ -29,10 +29,24 @@
 
 ## 验收标准
 
-- [ ] 列表分页/过滤/搜索正确。
-- [ ] 详情返回最新版本信息。
-- [ ] chunk 列表按 `chunk_index` 有序分页。
-- [ ] 软删除后列表不再出现该文档（`status != deleted`）。
+- [x] 列表分页/过滤/搜索正确。
+- [x] 详情返回最新版本信息。
+- [x] chunk 列表按 `chunk_index` 有序分页。
+- [x] 软删除后列表不再出现该文档（`status != deleted`）。
+
+## 产出物（C2 完成）
+
+- `app/services/document_service.py` 追加 — `list_documents`（强制 `tenant_id` 走 `idx_documents_tenant_status`；默认排除 `deleted`，显式传 `status` 可查删除项）、`get_document_or_404`（租户隔离 + 软删视为 404）、`get_latest_version`、`list_document_chunks`（当前版本 + `chunk_index` 有序分页）、`soft_delete_document`（`status='deleted'` + 同步置版本 `is_deleted=true`）。
+- `app/api/documents.py` 追加 4 个路由 — `GET /documents`、`GET /documents/{id}`、`GET /documents/{id}/chunks`、`DELETE /documents/{id}`，全部统一 envelope + `PageResult` 分页。
+- `app/schemas/document.py` 追加 — `DocumentOut` / `DocumentVersionOut` / `DocumentDetail` / `ChunkOut` / `DocumentDeleteResponse`。
+- `tests/test_c2_query.py` — 9 个离线用例（envelope 形状、过滤转发、422 分页校验、404 envelope、chunks 字段形状、软删 envelope）。
+
+## 实现说明
+
+- **软删语义**：列表默认 `status != 'deleted'`；`GET` 详情与 chunks 对软删文档一律 404（对用户不可见）；`DELETE` 同时把该文档所有版本的 `is_deleted` 置 true（与 E2 检索过滤 `is_deleted=false` 对齐）。显式 `GET /documents?status=deleted` 可查删除项（管理视图）。
+- **chunk 列表按 `current_version` 解析**（非简单 latest 标记），版本推进后自动跟随当前版本；`chunks` 表无 `is_deleted` 列，过滤职责在版本行。
+- **live E2E**（真库，探针后零残留）：3 文档（pdf×2 + txt）+ 乱序插入 5 chunks → 列表过滤/搜索/分页全对；乱序插入的 chunks 跨页严格有序 `[0,1] [2,3] [4]`；详情带 latest_version；软删后列表/详情即隐、`status=deleted` 显式可查、版本行已标记。
+- 质量门禁：ruff/black/mypy（42 文件）零错误，pytest **103 passed**。
 
 ## 关联任务
 
