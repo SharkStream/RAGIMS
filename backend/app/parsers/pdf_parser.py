@@ -20,6 +20,11 @@ class PdfParser(BaseParser):
     def parse_bytes(self, data: bytes) -> ParsedDocument:
         doc = pymupdf.open(stream=data, filetype="pdf")
         try:
+            if doc.needs_pass and doc.authenticate("") == 0:
+                raise ValueError(
+                    "PDF is password-protected: cannot extract text without "
+                    "credentials (D5 edge case)"
+                )
             blocks: list[Block] = []
             texts: list[str] = []
             for page_no in range(doc.page_count):

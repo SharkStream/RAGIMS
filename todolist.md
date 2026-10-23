@@ -136,21 +136,21 @@
 - [x] 清洗结果保留块级结构（含页码、段落类型）
 
 ### D4. 切分
-- [ ] 定义 `BaseChunker` 接口：`chunk(parsed_doc, config) -> List[Chunk]`
-- [ ] 固定长度切分器：按 token（`tiktoken`）切分，支持 `chunk_size`、`overlap`
-- [ ] 每个 chunk 计算 `chunk_hash`（SHA256 of text）
-- [ ] 每个 chunk 携带 `chunk_index`、`page`（若可得）、`metadata`
-- [ ] 提供默认切分配置（如 `chunk_size=512, overlap=50`）
+- [x] 定义 `BaseChunker` 接口：`chunk(parsed_doc, config) -> List[Chunk]`
+- [x] 固定长度切分器：按 token（`tiktoken`）切分，支持 `chunk_size`、`overlap`
+- [x] 每个 chunk 计算 `chunk_hash`（SHA256 of text）
+- [x] 每个 chunk 携带 `chunk_index`、`page`（若可得）、`metadata`
+- [x] 提供默认切分配置（如 `chunk_size=512, overlap=50`）
 
 ### D5. 单元测试
-- [ ] 三种格式各准备样例文件（`tests/fixtures/`）
-- [ ] 解析 → 清洗 → 切分 端到端单测
-- [ ] 边界用例：空文件、加密 PDF、超大文件、超长单段
+- [x] 三种格式各准备样例文件（`tests/fixtures/`）
+- [x] 解析 → 清洗 → 切分 端到端单测
+- [x] 边界用例：空文件、加密 PDF、超大文件、超长单段
 
 ### D6. 验收标准
-- [ ] 三种格式样例均能产出非空 chunk 列表
-- [ ] chunk 的 `token_count` 与 `chunk_size` 配置一致（±overlap）
-- [ ] 解析失败可正确落库并可见错误信息
+- [x] 三种格式样例均能产出非空 chunk 列表
+- [x] chunk 的 `token_count` 与 `chunk_size` 配置一致（±overlap）
+- [x] 解析失败可正确落库并可见错误信息
 
 ---
 
