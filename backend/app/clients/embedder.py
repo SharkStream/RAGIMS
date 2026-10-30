@@ -100,7 +100,8 @@ class BaseEmbedder(ABC):
 
     def _slice_batches(self, texts: list[str]) -> list[list[str]]:
         return [
-            texts[i : i + self.batch_size] for i in range(0, len(texts), self.batch_size)
+            texts[i : i + self.batch_size]
+            for i in range(0, len(texts), self.batch_size)
         ]
 
     def _validate(self, vectors: list[list[float]], expected: int) -> None:
@@ -128,8 +129,12 @@ class BaseEmbedder(ABC):
         """
         vectors: list[list[float]] = []
         for batch in self._slice_batches(texts):
+
+            def embed_one(batch: list[str] = batch) -> list[list[float]]:
+                return self._embed_once(batch)
+
             batch_vectors = with_backoff(
-                lambda b=batch: self._embed_once(b),
+                embed_one,
                 retry_when=retry_when or _is_retryable,
             )
             self._validate(batch_vectors, len(batch))

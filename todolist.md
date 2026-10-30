@@ -157,32 +157,32 @@
 ## E. Embedding + Qdrant 入库（3-4 天）
 
 ### E1. Embedding 客户端
-- [ ] `BaseEmbedder` 接口：`embed_batch(texts) -> List[List[float]]`
-- [ ] OpenAI 实现：`text-embedding-3-small`，支持批量（如每批 64 条）
-- [ ] 限流与重试：指数退避、429/5xx 重试
-- [ ] Token 统计：记录每批 token 数，写入 `job_steps.output`
-- [ ] 配置从 `embedding_models` 表读取（含 `dimension`）
+- [x] `BaseEmbedder` 接口：`embed_batch(texts) -> List[List[float]]`
+- [x] OpenAI 实现：`text-embedding-3-small`，支持批量（如每批 64 条）
+- [x] 限流与重试：指数退避、429/5xx 重试
+- [x] Token 统计：记录每批 token 数，写入 `job_steps.output`
+- [x] 配置从 `embedding_models` 表读取（含 `dimension`）
 
 ### E2. Qdrant 写入
-- [ ] Collection 初始化（dimension 对齐模型，distance=COSINE）
-- [ ] Payload 字段：`tenant_id`、`doc_id`、`doc_version_id`、`version`、`is_latest`、`is_deleted`、`access_level`、`chunk_index`、`page`、`chunk_hash`、`text`（可选）
-- [ ] Point ID 生成策略：UUID 或 `doc_version_id + chunk_index` 的确定性 ID（便于幂等 upsert）
-- [ ] 批量 upsert，失败重试
+- [x] Collection 初始化（dimension 对齐模型，distance=COSINE）
+- [x] Payload 字段：`tenant_id`、`doc_id`、`doc_version_id`、`version`、`is_latest`、`is_deleted`、`access_level`、`chunk_index`、`page`、`chunk_hash`、`text`（可选）
+- [x] Point ID 生成策略：UUID 或 `doc_version_id + chunk_index` 的确定性 ID（便于幂等 upsert）
+- [x] 批量 upsert，失败重试
 - [ ] 回写 `chunks.qdrant_point_id`
 
 ### E3. MySQL 元数据写入
-- [ ] 批量写入 `chunks` 表（含 `token_count`、`chunk_hash`、`metadata`）
-- [ ] 更新 `document_versions.chunk_count`、`embedding_model`
-- [ ] 顺序约定：**先写 MySQL，再写 Qdrant，最后回写 point_id**（失败可重试对账）
+- [x] 批量写入 `chunks` 表（含 `token_count`、`chunk_hash`、`metadata`）
+- [x] 更新 `document_versions.chunk_count`、`embedding_model`
+- [x] 顺序约定：**先写 MySQL，再写 Qdrant，最后回写 point_id**（失败可重试对账）
 
 ### E4. 一致性保障
-- [ ] 幂等：相同 `doc_version_id` 重复处理时先按 filter 删除旧 points
-- [ ] 对账脚本（MVP 简易版）：扫描 `chunks` 缺失 `qdrant_point_id` 的记录并重试
+- [x] 幂等：相同 `doc_version_id` 重复处理时先按 filter 删除旧 points
+- [x] 对账脚本（MVP 简易版）：扫描 `chunks` 缺失 `qdrant_point_id` 的记录并重试
 
 ### E5. 验收标准
-- [ ] 样例文档全流程后，Qdrant 中 points 数与 `chunks` 表一致
-- [ ] payload 字段完整，`is_latest=true`
-- [ ] 相同文档重复处理不产生重复 points
+- [x] 样例文档全流程后，Qdrant 中 points 数与 `chunks` 表一致
+- [x] payload 字段完整，`is_latest=true`
+- [x] 相同文档重复处理不产生重复 points
 
 ---
 

@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 import pytest
 import tiktoken
-
 from app.clients.embedder import (
     BaseEmbedder,
     EmbeddingUsage,
@@ -87,7 +86,9 @@ def test_count_tokens_uses_tiktoken() -> None:
 def test_transient_failure_is_retried_until_success() -> None:
     emb = FakeEmbedder(fail_times=2)
     sleeps: list[float] = []
-    vectors = emb.embed_batch(["a", "b"], retry_when=lambda e: isinstance(e, TimeoutError))
+    vectors = emb.embed_batch(
+        ["a", "b"], retry_when=lambda e: isinstance(e, TimeoutError)
+    )
     assert len(vectors) == 2
     assert emb.calls == 3  # 2 failures + 1 success
     assert sleeps == []  # real with_backoff slept via time.sleep; delays asserted below
@@ -129,14 +130,18 @@ def test_with_backoff_delay_sequence_and_exhaustion() -> None:
         raise TimeoutError("down")
 
     with pytest.raises(TimeoutError):
-        with_backoff(always_fails, retries=3, base_delay=0.5, max_delay=8.0, sleep=sleeps.append)
+        with_backoff(
+            always_fails, retries=3, base_delay=0.5, max_delay=8.0, sleep=sleeps.append
+        )
     assert calls["n"] == 4  # retries=3 -> 4 attempts
     assert sleeps == [0.5, 1.0, 2.0]  # capped later by max_delay
 
     # cap: retries with big base stay <= max_delay
     sleeps2: list[float] = []
     with pytest.raises(TimeoutError):
-        with_backoff(always_fails, retries=3, base_delay=5.0, max_delay=6.0, sleep=sleeps2.append)
+        with_backoff(
+            always_fails, retries=3, base_delay=5.0, max_delay=6.0, sleep=sleeps2.append
+        )
     assert sleeps2 == [5.0, 6.0, 6.0]
 
 
@@ -191,25 +196,35 @@ def test_embed_with_usage_stats_shape() -> None:
 def _sdk_response(vectors: list[list[float]], order: list[int]) -> SimpleNamespace:
     """Fake embeddings.create response with rows in arbitrary order."""
     return SimpleNamespace(
-        data=[SimpleNamespace(index=i, embedding=v) for i, v in zip(order, vectors)]
+        data=[
+            SimpleNamespace(index=i, embedding=v)
+            for i, v in zip(order, vectors, strict=False)
+        ]
     )
 
 
 def test_openai_embedder_restores_input_order() -> None:
-    emb = OpenAIEmbedder("text-embedding-3-small", dimension=4, api_key="k", base_url="http://x")
+    emb = OpenAIEmbedder(
+        "text-embedding-3-small", dimension=4, api_key="k", base_url="http://x"
+    )
     vectors = [[1.0] * 4, [2.0] * 4, [3.0] * 4]
     with patch.object(emb._client.embeddings, "create") as create:
         create.return_value = _sdk_response(vectors, order=[2, 0, 1])
         out = emb.embed_batch(["a", "b", "c"])
     # response rows carry index 2,0,1 -> restoring input order yields v1,v2,v0
     assert out == [[2.0] * 4, [3.0] * 4, [1.0] * 4]
-    create.assert_called_once_with(model="text-embedding-3-small", input=["a", "b", "c"])
+    create.assert_called_once_with(
+        model="text-embedding-3-small", input=["a", "b", "c"]
+    )
 
 
 def test_build_embedder_from_model_row_uses_row_config() -> None:
     row = EmbeddingModel(
-        id="m1", name="default", provider="openai",
-        model_name="text-embedding-3-small", dimension=1536,
+        id="m1",
+        name="default",
+        provider="openai",
+        model_name="text-embedding-3-small",
+        dimension=1536,
     )
     emb = build_embedder_from_model(row)
     assert emb.model_name == "text-embedding-3-small"
