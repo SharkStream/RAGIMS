@@ -103,6 +103,9 @@ def finish_job(
     """Mark the job ``succeeded`` after its last step passes."""
     with session_factory() as session:
         _set_job_status(session, job_id, "succeeded")
+        job = session.get(IngestionJob, job_id)
+        if job is not None:
+            job.finished_at = utcnow_ms()
         session.commit()
 
 
@@ -115,6 +118,13 @@ def _set_job_status(
     job.status = status
     if error is not None:
         job.error_message = error
+    # job-level wall-clock window (H3 board duration column): stamp the first
+    # time the job enters "running"; the failed path in record_step stamps
+    # finished_at as well.
+    if status == "running" and job.started_at is None:
+        job.started_at = utcnow_ms()
+    if status == "failed" and job.finished_at is None:
+        job.finished_at = utcnow_ms()
 
 
 def _serialize(result: Any) -> dict[str, Any] | None:

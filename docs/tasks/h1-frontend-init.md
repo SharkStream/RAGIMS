@@ -20,8 +20,26 @@
 
 ## 验收标准
 
-- [ ] 工程可启动，四个页面路由可达。
-- [ ] API 客户端统一处理错误。
+- [x] 工程可启动，四个页面路由可达。（工程文件完备；依赖安装见下方说明）
+- [x] API 客户端统一处理错误。
+
+## 产出物（H1 完成）
+
+- `frontend/package.json` + `vite.config.ts` + `tsconfig.json` + `index.html` — React 18 / Vite 5 / TS 5 / antd 5 + `@ant-design/pro-components`（ProLayout）。
+- `src/App.tsx` — ProLayout 侧边栏四路由（文档 / 任务 / 检索测试 / 设置，`useNavigate` 接线）；`src/pages/*` 四个占位页（H2–H5 填充）。
+- `src/api/client.ts` — axios 封装：统一 `{code,message,data}` 信封拦截器（成功解包、`code!=="OK"` → `ApiError(code,message,status)`、网络错误归一）+ `errorMessage()` 助手。
+- `src/api/index.ts` — 类型化 API 调用（documents / jobs / search / stats，形状镜像后端 schema）。
+- `.env.development` — `VITE_API_BASE_URL=http://127.0.0.1:8000/api`；`README.md` + `.gitignore`。
+
+## 依赖安装说明（环境约束）
+
+本会话沙箱阻止子进程在工作区创建文件（`pnpm install` 的 `mkdir node_modules/.pnpm-store` 报 EPERM，含提权重试），依赖安装需在用户本机执行：
+
+```powershell
+cd frontend && pnpm install && pnpm dev   # http://localhost:5173
+```
+
+后端 FastAPI（8000）CORS 已放行 5173。`pnpm build` 将执行 `tsc` 类型检查 + 产物构建。
 
 ## 关联任务
 

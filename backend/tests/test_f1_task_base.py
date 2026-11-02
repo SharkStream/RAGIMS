@@ -21,6 +21,8 @@ class FakeJob:
     def __init__(self) -> None:
         self.status = "pending"
         self.error_message = None
+        self.started_at = None
+        self.finished_at = None
 
 
 class FakeSession:

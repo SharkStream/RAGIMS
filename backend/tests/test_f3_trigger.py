@@ -133,7 +133,13 @@ def test_cancel_404_for_foreign_tenant() -> None:
 
 
 def test_record_step_raises_before_cancelled_step() -> None:
-    job = SimpleNamespace(id="j-1", status="cancelled", error_message=None)
+    job = SimpleNamespace(
+        id="j-1",
+        status="cancelled",
+        error_message=None,
+        started_at=None,
+        finished_at=None,
+    )
     session = FakeSession(jobs={"j-1": job})
     with pytest.raises(PipelineCancelledError, match="cancelled before step parse"):
         with record_step("j-1", "parse", lambda: {}, session_factory=lambda: session):
@@ -143,7 +149,13 @@ def test_record_step_raises_before_cancelled_step() -> None:
 
 
 def test_running_job_is_not_blocked() -> None:
-    job = SimpleNamespace(id="j-1", status="running", error_message=None)
+    job = SimpleNamespace(
+        id="j-1",
+        status="running",
+        error_message=None,
+        started_at=None,
+        finished_at=None,
+    )
     session = FakeSession(jobs={"j-1": job})
     with record_step(
         "j-1", "parse", lambda: {"ok": 1}, session_factory=lambda: session

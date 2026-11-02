@@ -29,6 +29,8 @@ class FakeSession:
             version=1,
             tenant_id="t-1",
             access_level="internal",
+            started_at=None,
+            finished_at=None,
         )
         self.steps: list[SimpleNamespace] = []
 
