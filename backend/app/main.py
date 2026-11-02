@@ -17,6 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.datasources import router as datasources_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
+from app.api.jobs import router as jobs_router
+from app.api.search import router as search_router
+from app.api.stats import router as stats_router
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
 from app.core.logging import setup_logging
@@ -46,6 +49,9 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(documents_router, prefix=settings.app.api_prefix)
 app.include_router(datasources_router, prefix=settings.app.api_prefix)
+app.include_router(jobs_router, prefix=settings.app.api_prefix)
+app.include_router(search_router, prefix=settings.app.api_prefix)
+app.include_router(stats_router, prefix=settings.app.api_prefix)
 
 # Unified error envelope for every route registered above and below.
 register_exception_handlers(app)

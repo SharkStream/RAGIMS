@@ -27,12 +27,15 @@ from app.schemas.document import (
     DocumentOut,
     DocumentUploadResponse,
     DocumentVersionOut,
+    JobCancelResponse,
 )
 from app.services.document_service import (
+    cancel_job,
     get_document_or_404,
     get_latest_version,
     list_document_chunks,
     list_documents,
+    reprocess_document,
     soft_delete_document,
     upload_document,
 )
@@ -233,3 +236,58 @@ def delete_doc(
     """Marks the document deleted; list/detail treat it as nonexistent."""
     doc = soft_delete_document(db, user.tenant_id, doc_id)
     return ok(DocumentDeleteResponse(doc_id=doc.id, status=doc.status))
+
+
+# --------------------------------------------------------------------------- #
+# F3 · reprocess + cancel
+# --------------------------------------------------------------------------- #
+
+
+@router.post(
+    "/{doc_id}/reprocess",
+    response_model=ApiResponse[DocumentUploadResponse],
+    summary="Create a reprocess job for the latest version and dispatch it",
+    status_code=201,
+)
+def reprocess(
+    doc_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[DocumentUploadResponse]:
+    """New ``job_type=reprocess`` row + pipeline dispatch (idempotent chain)."""
+    outcome = reprocess_document(db, user.tenant_id, doc_id, user_id=user.id)
+    return ok(
+        DocumentUploadResponse(
+            doc_id=outcome.doc_id,
+            version=outcome.version,
+            job_id=outcome.job_id,
+            status=outcome.status,
+            duplicate=outcome.duplicate,
+            file_path=outcome.file_path,
+            content_hash=outcome.content_hash,
+        )
+    )
+
+
+@router.post(
+    "/{doc_id}/jobs/{job_id}/cancel",
+    response_model=ApiResponse[JobCancelResponse],
+    summary="Cooperatively cancel a pending/running job",
+)
+def cancel_job_endpoint(
+    doc_id: str,
+    job_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[JobCancelResponse]:
+    """Marks the job ``cancelled``; the worker checks the flag before each step."""
+    job = cancel_job(db, user.tenant_id, job_id)
+    if job.doc_id != doc_id:  # job must belong to the path document
+        from app.core.errors import AppError
+
+        raise AppError(
+            f"job {job_id} does not belong to document {doc_id}",
+            code="ERR_CONFLICT",
+            status_code=409,
+        )
+    return ok(JobCancelResponse(job_id=str(job.id), status=str(job.status)))

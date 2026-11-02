@@ -79,3 +79,15 @@ class DocumentDeleteResponse(BaseModel):
 
     doc_id: str
     status: str = "deleted"
+
+
+# --------------------------------------------------------------------------- #
+# F3 · reprocess + cancel
+# --------------------------------------------------------------------------- #
+
+
+class JobCancelResponse(BaseModel):
+    """Payload of ``POST /documents/{id}/jobs/{job_id}/cancel``."""
+
+    job_id: str = Field(description="ingestion_jobs.id (UUID string)")
+    status: str = Field(description="new job status (always 'cancelled' on success)")

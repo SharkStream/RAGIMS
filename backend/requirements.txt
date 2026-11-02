@@ -9,6 +9,7 @@ alembic>=1.13.0
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
 celery>=5.4.0
+flower>=2.0.0  # Celery monitor UI (compose: worker flower, port 5555)
 redis>=5.0.0
 pymysql>=1.1.0
 cryptography>=42.0.0

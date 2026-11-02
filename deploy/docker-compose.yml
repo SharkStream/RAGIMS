@@ -138,7 +138,7 @@ services:
     working_dir: /app
     volumes:
       - ../backend:/app
-    command: celery -A app.core.celery_app flower --port=5555
+    command: celery -A app.workers.celery_app flower --port=5555
     environment: *backend-env
     ports:
       - "5555:5555"

@@ -189,54 +189,54 @@
 ## F. Celery 任务流水线（4-5 天）
 
 ### F1. Celery 基础
-- [ ] Celery app 配置：Broker=Redis，Result backend=Redis
-- [ ] 队列划分：`parse`、`embed`、`default`（MVP 可先单队列，但保留扩展点）
-- [ ] Flower 接入（本地开发可视）
-- [ ] 任务基类：统一 job_step 记录、异常捕获、状态更新
+- [x] Celery app 配置：Broker=Redis，Result backend=Redis
+- [x] 队列划分：`parse`、`embed`、`default`（MVP 可先单队列，但保留扩展点）
+- [x] Flower 接入（本地开发可视）
+- [x] 任务基类：统一 job_step 记录、异常捕获、状态更新
 
 ### F2. 流水线编排
-- [ ] Chain：`download → parse → clean → chunk → embed → upsert → index(可选) → finalize`
-- [ ] 每一步：更新 `job_steps.status/started_at/finished_at/output/error_message`
-- [ ] 任务整体状态机：`pending → running → success / failed`
-- [ ] 失败重试：每步 `max_retries=3`，指数退避
-- [ ] 幂等：以 `doc_version_id` 为幂等键，避免重复处理
+- [x] Chain：`download → parse → clean → chunk → embed → upsert → index(可选) → finalize`
+- [x] 每一步：更新 `job_steps.status/started_at/finished_at/output/error_message`
+- [x] 任务整体状态机：`pending → running → success / failed`
+- [x] 失败重试：每步 `max_retries=3`，指数退避
+- [x] 幂等：以 `doc_version_id` 为幂等键，避免重复处理
 
 ### F3. 触发入口
-- [ ] 上传接口投递任务
-- [ ] `POST /documents/{id}/reprocess`：创建新 job 并投递
-- [ ] 任务取消（MVP 可选：标记 cancelled，worker 检查中断）
+- [x] 上传接口投递任务
+- [x] `POST /documents/{id}/reprocess`：创建新 job 并投递
+- [x] 任务取消（MVP 可选：标记 cancelled，worker 检查中断）
 
 ### F4. 验收标准
-- [ ] 上传后任务自动流转至 success
-- [ ] `job_steps` 每步有耗时与 output
-- [ ] 人为制造解析失败，任务状态为 failed 且 error_message 可读
-- [ ] 重试机制生效（可 mock 外部依赖失败验证）
+- [x] 上传后任务自动流转至 success
+- [x] `job_steps` 每步有耗时与 output
+- [x] 人为制造解析失败，任务状态为 failed 且 error_message 可读
+- [x] 重试机制生效（可 mock 外部依赖失败验证）
 
 ---
 
 ## G. 任务 / Chunk / 检索测试 API（3-4 天）
 
 ### G1. 任务接口
-- [ ] `GET /jobs`：分页、按 status/job_type 过滤
-- [ ] `GET /jobs/{id}`：任务详情
-- [ ] `GET /jobs/{id}/steps`：步骤列表（含耗时、状态、错误）
-- [ ] `POST /jobs/{id}/retry`：失败任务重投
-- [ ] `POST /jobs/{id}/cancel`：标记取消
+- [x] `GET /jobs`：分页、按 status/job_type 过滤
+- [x] `GET /jobs/{id}`：任务详情
+- [x] `GET /jobs/{id}/steps`：步骤列表（含耗时、状态、错误）
+- [x] `POST /jobs/{id}/retry`：失败任务重投
+- [x] `POST /jobs/{id}/cancel`：标记取消
 
 ### G2. 检索测试接口
-- [ ] `POST /search/test`：入参 `{query, top_k, tenant_id, filters}` 
-- [ ] 调用 embedding 生成 query 向量 → Qdrant search
-- [ ] 返回：`score`、`text`、`doc_id`、`version`、`page`、`metadata`
-- [ ] 强制 `tenant_id` 过滤 + `is_latest=true` + `is_deleted=false`
-- [ ] 返回耗时（embedding / search 分项）
+- [x] `POST /search/test`：入参 `{query, top_k, tenant_id, filters}` 
+- [x] 调用 embedding 生成 query 向量 → Qdrant search
+- [x] 返回：`score`、`text`、`doc_id`、`version`、`page`、`metadata`
+- [x] 强制 `tenant_id` 过滤 + `is_latest=true` + `is_deleted=false`
+- [x] 返回耗时（embedding / search 分项）
 
 ### G3. 统计接口（MVP 最小）
-- [ ] `GET /stats`：文档数、chunk 数、任务成功率、今日处理量
+- [x] `GET /stats`：文档数、chunk 数、任务成功率、今日处理量
 
 ### G4. 验收标准
-- [ ] 检索测试能返回相关 chunk，score 合理
-- [ ] 跨租户数据不可见
-- [ ] 任务列表与步骤可视化数据完整
+- [x] 检索测试能返回相关 chunk，score 合理
+- [x] 跨租户数据不可见
+- [x] 任务列表与步骤可视化数据完整
 
 ---
 

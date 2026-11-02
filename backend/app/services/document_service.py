@@ -413,3 +413,86 @@ def soft_delete_document(session: Session, tenant_id: str, doc_id: str) -> Docum
     session.commit()
     logger.info(f"document soft-deleted: {doc.id}")
     return doc
+
+
+# --------------------------------------------------------------------------- #
+# F3 · reprocess + cancel
+# --------------------------------------------------------------------------- #
+
+
+def reprocess_document(
+    session: Session,
+    tenant_id: str,
+    doc_id: str,
+    *,
+    user_id: str | None = None,
+) -> UploadOutcome:
+    """Create a fresh ``reprocess`` job for the latest version and dispatch it.
+
+    Reuses the latest version's stored raw file — no re-upload needed. The
+    pipeline is idempotent end-to-end (F2), so a duplicate reprocess is safe.
+    """
+    doc = get_document_or_404(session, tenant_id, doc_id)
+    version = session.scalars(
+        select(DocumentVersion)
+        .where(DocumentVersion.doc_id == doc.id, DocumentVersion.is_latest.is_(True))
+        .order_by(DocumentVersion.version.desc())
+        .limit(1)
+    ).first()
+    if version is None:
+        raise NotFoundError(f"document {doc_id} has no version to reprocess")
+
+    job = IngestionJob(
+        tenant_id=tenant_id,
+        doc_id=doc.id,
+        doc_version_id=version.id,
+        job_type="reprocess",
+        status="pending",
+        created_by=user_id,
+    )
+    session.add(job)
+    session.commit()
+
+    celery_task_id = _dispatch_ingestion(str(version.id))
+    if celery_task_id:
+        job.celery_task_id = celery_task_id
+        session.commit()
+    logger.info(
+        f"reprocess dispatched: doc={doc.id} v{version.version} job={job.id} "
+        f"task={celery_task_id or 'n/a'}"
+    )
+    return UploadOutcome(
+        doc_id=doc.id,
+        version=version.version,
+        job_id=job.id,
+        status=doc.status,
+        duplicate=False,
+        file_path=version.file_path,
+        content_hash=version.content_hash,
+    )
+
+
+_CANCELABLE = ("pending", "running")
+
+
+def cancel_job(session: Session, tenant_id: str, job_id: str) -> IngestionJob:
+    """Mark a pending/running job ``cancelled`` (MVP cooperative cancel, F3).
+
+    The worker recognizes the flag before each step (see
+    :func:`app.workers.base.record_step`); steps already finished stay.
+    Cancelling a terminal job is a 409.
+    """
+    job = session.get(IngestionJob, job_id)
+    if job is None or job.tenant_id != tenant_id:
+        raise NotFoundError(f"job {job_id} not found")
+    if job.status not in _CANCELABLE:
+        raise AppError(
+            f"job {job_id} is {job.status} and cannot be cancelled",
+            code="ERR_CONFLICT",
+            status_code=409,
+            details={"job_id": job_id, "status": job.status},
+        )
+    job.status = "cancelled"
+    session.commit()
+    logger.info(f"job cancelled: {job_id} (was {job.status})")
+    return job

@@ -19,8 +19,21 @@
 
 ## 验收标准
 
-- [ ] 上传/重处理均能投递并关联 job。
-- [ ] 取消标记可被 worker 识别。
+- [x] 上传/重处理均能投递并关联 job。
+- [x] 取消标记可被 worker 识别。
+
+## 产出物（F3 完成，F 阶段收官 = M2 后端闭环）
+
+- `app/services/document_service.py` — `reprocess_document`（404 校验 → 取 `is_latest` 版本 → **新 job（`job_type=reprocess`）** → dispatch → `celery_task_id` 回写；复用 MinIO 里的原文件，无需重传）；`cancel_job`（仅 `pending/running` 可取消 → `cancelled`；终态 job → 409 `ERR_CONFLICT`；tenant 归属校验）。上传投递（C1 已有）本任务验收通过。
+- `app/api/documents.py` — `POST /documents/{id}/reprocess`（201，返回 job_id）；`POST /documents/{id}/jobs/{job_id}/cancel`（200 `JobCancelResponse` / 409）。
+- `app/workers/base.py` + `pipeline.py` — **取消识别**：`record_step` 在创建步骤行**之前**检查 `job.status == "cancelled"` → 抛 `PipelineCancelledError`（无 step 行、job 保持 cancelled）；`ingest_document` 用 `dont_autoretry_for=(PipelineCancelledError,)` 吞掉（**不触发重试**），返回 `{"status": "cancelled"}`。
+- `tests/test_f3_trigger.py` — 8 个离线用例（reprocess 建 job + dispatch + task_id 回写、404、cancel 语义、终态 409、跨租户 404、**worker 识别**（cancelled → 0 step 行 + 状态保持）、running 不受影响、eager apply 吞取消）。
+
+## 实现说明
+
+- **确定性取消验证**：live 探针先造一个「已入队未派发」的 pending job → cancel API（200）→ `ingest_document.apply()` 进程内 eager 执行（等价 worker 任务体）→ 返回 `{"status":"cancelled"}`、**0 条 step 行**、job 状态保持 cancelled——无 broker 竞态。
+- **live E2E**（真 worker + broker）：① 完成文档 → reprocess API → **新 reprocess job** → 七步全链重跑 → succeeded，`celery_task_id` 回写；② 终态 job cancel → 409。
+- 质量门禁：ruff（含 scripts）/black/mypy（61 文件）零错误，pytest **227 passed**。
 
 ## 关联任务
 
