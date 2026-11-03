@@ -65,7 +65,7 @@ def test_base_parser_is_abstract() -> None:
 
 
 def test_supported_types_match_b1_domain() -> None:
-    assert SUPPORTED_TYPES == {"pdf", "docx", "txt"}
+    assert SUPPORTED_TYPES == {"pdf", "docx", "txt", "md"}
 
 
 # --------------------------------------------------------------------------- #

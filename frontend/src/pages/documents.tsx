@@ -34,7 +34,7 @@ import {
   type DocumentOut,
 } from "../api";
 
-const ACCEPT = [".pdf", ".docx", ".txt"];
+const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
 const MAX_MB = 50;
 
 function fileOk(name: string): boolean {
@@ -266,6 +266,7 @@ export default function DocumentsPage() {
               { value: "pdf", label: "PDF" },
               { value: "docx", label: "DOCX" },
               { value: "txt", label: "TXT" },
+              { value: "md", label: "Markdown" },
             ]}
             onChange={(v) => {
               setFileType(v);

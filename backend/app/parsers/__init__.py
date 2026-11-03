@@ -18,6 +18,7 @@ from app.parsers.base import (
 
 # Import for the side effect of self-registration (order is irrelevant).
 from app.parsers.docx_parser import DocxParser
+from app.parsers.md_parser import MarkdownParser
 from app.parsers.pdf_parser import PdfParser
 from app.parsers.registry import get_parser, register, registered_types
 from app.parsers.txt_parser import TxtParser
@@ -27,6 +28,7 @@ __all__ = [
     "BaseParser",
     "Block",
     "DocxParser",
+    "MarkdownParser",
     "ParsedDocument",
     "PdfParser",
     "TxtParser",

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 #: File types the ingestion pipeline can parse (B1 ``documents.file_type``).
-SUPPORTED_TYPES = {"pdf", "docx", "txt"}
+SUPPORTED_TYPES = {"pdf", "docx", "txt", "md"}
 
 
 class UnsupportedFileType(Exception):

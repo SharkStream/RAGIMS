@@ -62,12 +62,13 @@ def build_docx() -> bytes:
 # --------------------------------------------------------------------------- #
 
 
-def test_real_parsers_registered_for_all_three_types() -> None:
+def test_real_parsers_registered_for_all_supported_types() -> None:
     import app.parsers.docx_parser  # noqa: F401 — self-registration
+    import app.parsers.md_parser  # noqa: F401
     import app.parsers.pdf_parser  # noqa: F401
     import app.parsers.txt_parser  # noqa: F401
 
-    assert registered_types() == {"pdf", "docx", "txt"}
+    assert registered_types() == {"pdf", "docx", "txt", "md"}
     assert isinstance(get_parser("pdf"), PdfParser)
     assert isinstance(get_parser("docx"), DocxParser)
     assert isinstance(get_parser("txt"), TxtParser)

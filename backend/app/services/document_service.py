@@ -47,7 +47,11 @@ ALLOWED_TYPES: dict[str, set[str]] = {
         "application/x-zip-compressed",
     },
     "txt": set(),  # any "text/*" or octet-stream; see _mime_ok
+    "md": set(),  # Markdown is plain text: same permissive MIME rule as txt
 }
+
+#: Extensions treated as plain text (any "text/*" MIME or no MIME at all).
+_TEXT_EXTENSIONS = ("txt", "md")
 
 #: Sentinel MIME browsers send when they cannot tell (treated as unknown).
 _GENERIC_MIME = "application/octet-stream"
@@ -69,7 +73,7 @@ class UploadOutcome:
 def _mime_ok(ext: str, mime: str | None) -> bool:
     if not mime or mime == _GENERIC_MIME:
         return True
-    if ext == "txt":
+    if ext in _TEXT_EXTENSIONS:
         return mime.startswith("text/")
     return mime in ALLOWED_TYPES[ext]
 
@@ -88,8 +92,9 @@ def validate_upload(
     """
     ext = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
     if ext not in ALLOWED_TYPES:
+        allowed = ", ".join(sorted(ALLOWED_TYPES))
         raise AppError(
-            f"unsupported file type: {ext or '(none)'} — allowed: pdf, docx, txt",
+            f"unsupported file type: {ext or '(none)'} — allowed: {allowed}",
             code="ERR_FILE_TYPE_NOT_ALLOWED",
             status_code=415,
             details={"file_type": ext, "allowed": sorted(ALLOWED_TYPES)},

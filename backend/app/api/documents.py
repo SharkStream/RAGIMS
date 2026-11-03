@@ -1,6 +1,6 @@
 """Document API routes (C1 upload, C2 query/soft-delete).
 
-``POST /documents/upload`` — multipart upload of pdf/docx/txt (≤ 50 MB by
+``POST /documents/upload`` — multipart upload of pdf/docx/txt/md (≤ 50 MB by
 default), validated then persisted by :mod:`app.services.document_service`.
 
 C2 adds the read side: list (filter/search/paginate), detail (+ latest
@@ -55,11 +55,11 @@ _READ_CAP_MB = 200
 @router.post(
     "/upload",
     response_model=ApiResponse[DocumentUploadResponse],
-    summary="Upload a document (pdf/docx/txt, idempotent on content hash)",
+    summary="Upload a document (pdf/docx/txt/md, idempotent on content hash)",
     status_code=201,
 )
 def upload(
-    file: Annotated[UploadFile, File(description="pdf / docx / txt file")],
+    file: Annotated[UploadFile, File(description="pdf / docx / txt / md file")],
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[CurrentUser, Depends(get_current_user)],
     datasource_id: Annotated[
@@ -150,7 +150,7 @@ def list_docs(
         str | None, Query(description="exact status filter (e.g. processing)")
     ] = None,
     file_type: Annotated[
-        str | None, Query(description="exact file type: pdf / docx / txt")
+        str | None, Query(description="exact file type: pdf / docx / txt / md")
     ] = None,
     keyword: Annotated[
         str | None, Query(description="LIKE search on title / file_name")

@@ -15,7 +15,7 @@
 
 | 方法 | 路径 | 说明 |
 | :-- | :-- | :-- |
-| POST | `/api/documents/upload` | Upload a document (pdf/docx/txt, idempotent on content hash) |
+| POST | `/api/documents/upload` | Upload a document (pdf/docx/txt/md, idempotent on content hash) |
 | GET | `/api/documents` | List documents (filter / search / paginate; excludes deleted) |
 | GET | `/api/documents/{doc_id}` | Document detail with its latest version |
 | DELETE | `/api/documents/{doc_id}` | Soft delete (status=deleted; async object cleanup is out of MVP) |
@@ -68,7 +68,7 @@
 | 404 | ERR_NOT_FOUND | 文档/任务不存在或跨租户 |
 | 409 | ERR_CONFLICT | 状态不允许（如 succeeded 重试、cancel 冲突） |
 | 413 | ERR_FILE_TOO_LARGE | 超过 50MB 上限 |
-| 415 | ERR_FILE_TYPE_NOT_ALLOWED | 非 pdf/docx/txt |
+| 415 | ERR_FILE_TYPE_NOT_ALLOWED | 非 pdf/docx/txt/md |
 | 422 | ERR_VALIDATION | 请求体校验失败 |
 | 500 | ERR_INTERNAL | 服务内部错误 |
 | 501 | ERR_NOT_IMPLEMENTED | 非 local 数据源 |
