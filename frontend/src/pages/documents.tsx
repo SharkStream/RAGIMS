@@ -45,6 +45,7 @@ function fileOk(name: string): boolean {
 function statusTag(status: string) {
   const map: Record<string, { color: string; text: string }> = {
     processing: { color: "processing", text: "处理中" },
+    succeeded: { color: "success", text: "已完成" },
     parsed: { color: "success", text: "已解析" },
     failed: { color: "error", text: "失败" },
     deleted: { color: "default", text: "已删除" },
@@ -252,7 +253,11 @@ export default function DocumentsPage() {
             allowClear
             placeholder="状态"
             style={{ width: 120 }}
-            options={[{ value: "processing", label: "处理中" }]}
+            options={[
+              { value: "processing", label: "处理中" },
+              { value: "succeeded", label: "已完成" },
+              { value: "failed", label: "失败" },
+            ]}
             onChange={(v) => {
               setStatus(v);
               setPage(1);

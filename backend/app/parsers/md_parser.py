@@ -22,6 +22,10 @@ _SAMPLE = 64 * 1024
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+\S")
 _FENCE_RE = re.compile(r"^(```|~~~)")
+#: Thematic break (horizontal rule): --- *** ___ and spaced variants (* * *).
+#: Skipped: a bare rule becomes a 1-token junk chunk that still costs an
+#: embedding call. Only dashes/stars/underscores + spaces may match.
+_HR_RE = re.compile(r"^(?:[-*_]\s*){3,}$")
 
 
 @register("md")
@@ -74,6 +78,9 @@ class MarkdownParser(BaseParser):
             if _HEADING_RE.match(line.strip()):
                 flush_paragraph()
                 blocks.append(Block(text=line.strip(), block_type="heading"))
+                continue
+            if _HR_RE.match(line.strip()):
+                flush_paragraph()
                 continue
             if not line.strip():
                 flush_paragraph()

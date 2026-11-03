@@ -166,9 +166,14 @@ class OpenAIEmbedder(BaseEmbedder):
         api_key: str | None = None,
         base_url: str | None = None,
         timeout: float | None = None,
-        batch_size: int = 64,
+        batch_size: int | None = None,
     ) -> None:
-        super().__init__(model_name, dimension, batch_size)
+        bsize = (
+            batch_size
+            if batch_size is not None
+            else settings.openai.embedding_batch_size
+        )
+        super().__init__(model_name, dimension, bsize)
         self._client = OpenAI(
             api_key=api_key if api_key is not None else settings.openai.api_key,
             base_url=base_url if base_url is not None else settings.openai.base_url,
@@ -183,7 +188,7 @@ class OpenAIEmbedder(BaseEmbedder):
 
 
 def build_embedder_from_model(
-    model: EmbeddingModel, *, batch_size: int = 64
+    model: EmbeddingModel, *, batch_size: int | None = None
 ) -> BaseEmbedder:
     """Instantiate the right embedder from an ``embedding_models`` row (E1 step 4).
 
@@ -200,7 +205,9 @@ def build_embedder_from_model(
     )
 
 
-def get_default_embedder(session: Session, *, batch_size: int = 64) -> BaseEmbedder:
+def get_default_embedder(
+    session: Session, *, batch_size: int | None = None
+) -> BaseEmbedder:
     """Load the default model row from ``embedding_models`` and build it."""
     model = session.scalars(
         select(EmbeddingModel)

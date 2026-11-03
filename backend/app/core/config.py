@@ -118,6 +118,9 @@ class OpenAISettings(BaseModel):
     base_url: str = "https://api.openai.com/v1"
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536
+    # Max texts per embeddings request. OpenAI allows ~2048, but DashScope-style
+    # gateways cap at 25; keep a safe default for cross-provider compatibility.
+    embedding_batch_size: int = 25
     timeout: float = 60.0
 
 

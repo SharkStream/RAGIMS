@@ -78,9 +78,9 @@ export default function SearchTestPage() {
       {result && (
         <>
           <Space wrap size={24} style={{ margin: "20px 0 8px" }}>
-            <Statistic title="Embedding 耗时" value={result.took_embedding_ms} suffix="ms" />
-            <Statistic title="向量检索耗时" value={result.took_search_ms} suffix="ms" />
-            <Statistic title="总耗时" value={result.took_total_ms} suffix="ms" />
+            <Statistic title="Embedding 耗时" value={result.took_embedding_ms} precision={2} suffix="ms" />
+            <Statistic title="向量检索耗时" value={result.took_search_ms} precision={2} suffix="ms" />
+            <Statistic title="总耗时" value={result.took_total_ms} precision={2} suffix="ms" />
             <Statistic title="命中" value={result.hits.length} suffix={`/ top_${topK}`} />
           </Space>
 

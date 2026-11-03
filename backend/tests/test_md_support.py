@@ -36,6 +36,21 @@ class TestMarkdownParser:
             doc = MarkdownParser().parse_bytes(raw)
             assert doc.text == "" and doc.blocks == []
 
+    def test_thematic_break_skipped(self) -> None:
+        doc = MarkdownParser().parse_bytes(
+            b"before\n\n---\n\nafter\n\n***\n\n_ _ _\n\nend"
+        )
+        texts = [b.text for b in doc.blocks]
+        assert "---" not in texts and "***" not in texts and "_ _ _" not in texts
+        assert len(doc.blocks) == 3
+        assert [b.block_type for b in doc.blocks] == ["paragraph"] * 3
+
+    def test_table_separator_not_confused_with_hr(self) -> None:
+        doc = MarkdownParser().parse_bytes(b"| A | B |\n| :--- | :--- |\n| 1 | 2 |")
+        # table rows stay one paragraph; the |---| rule row is not a break
+        assert len(doc.blocks) == 1
+        assert "| :--- |" in doc.blocks[0].text
+
     def test_crlf_normalized(self) -> None:
         doc = MarkdownParser().parse_bytes(b"# T\r\n\r\nline one\r\nline two")
         assert "\r" not in doc.text

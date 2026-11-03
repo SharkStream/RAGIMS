@@ -8,7 +8,9 @@ Run from ``backend/``::
 from __future__ import annotations
 
 import pytest
-from app.workers.base import record_step
+from app.models.document import Document
+from app.models.ingestion_job import IngestionJob
+from app.workers.base import finish_job, record_step
 
 
 class FakeJobStep:
@@ -18,8 +20,9 @@ class FakeJobStep:
 
 
 class FakeJob:
-    def __init__(self) -> None:
+    def __init__(self, doc_id: str | None = None) -> None:
         self.status = "pending"
+        self.doc_id = doc_id
         self.error_message = None
         self.started_at = None
         self.finished_at = None
@@ -29,6 +32,7 @@ class FakeSession:
     def __init__(self) -> None:
         self.commits = 0
         self.job = FakeJob()
+        self.doc: FakeDocument | None = None
         self.steps: list[FakeJobStep] = []
 
     def __enter__(self) -> FakeSession:
@@ -43,11 +47,18 @@ class FakeSession:
     def add(self, step: FakeJobStep) -> None:
         self.steps.append(step)
 
-    def get(self, model: object, pk: object) -> FakeJob:
+    def get(self, model: object, pk: object) -> object:
+        if model is Document:
+            return self.doc
         return self.job
 
     def commit(self) -> None:
         self.commits += 1
+
+
+class FakeDocument:
+    def __init__(self, status: str = "processing") -> None:
+        self.status = status
 
 
 def make_factory(session: FakeSession):
@@ -126,3 +137,52 @@ def test_placeholder_task_registered() -> None:
     from app.workers.celery_app import celery_app
 
     assert celery_app.tasks["ragims.ingest_document"] is not None
+
+
+# --------------------------------------------------------------------------- #
+# document terminal-state sync (doc26 fix): a settled job decides doc.status
+# --------------------------------------------------------------------------- #
+
+
+def test_finish_job_marks_document_succeeded() -> None:
+    session = FakeSession()
+    session.job = FakeJob(doc_id="doc-1")
+    session.doc = FakeDocument("processing")
+    finish_job("job-1", session_factory=make_factory(session))
+    assert session.job.status == "succeeded"
+    assert session.doc.status == "succeeded"
+
+
+def test_failed_step_marks_document_failed() -> None:
+    session = FakeSession()
+    session.job = FakeJob(doc_id="doc-1")
+    session.doc = FakeDocument("processing")
+    with (
+        pytest.raises(RuntimeError),
+        record_step(
+            "job-1",
+            "boom",
+            lambda: (_ for _ in ()).throw(RuntimeError("x")),
+            session_factory=make_factory(session),
+        ),
+    ):
+        pass
+    assert session.job.status == "failed"
+    assert session.doc.status == "failed"
+
+
+def test_soft_deleted_document_never_resurrected() -> None:
+    session = FakeSession()
+    session.job = FakeJob(doc_id="doc-1")
+    session.doc = FakeDocument("deleted")
+    finish_job("job-1", session_factory=make_factory(session))
+    assert session.doc.status == "deleted"
+
+
+def test_cancelled_job_leaves_document_processing() -> None:
+    session = FakeSession()
+    session.job = FakeJob(doc_id="doc-1")
+    session.doc = FakeDocument("processing")
+    session.get(IngestionJob, "job-1").status = "cancelled"
+    finish_job("job-1", session_factory=make_factory(session))
+    assert session.doc.status == "processing"

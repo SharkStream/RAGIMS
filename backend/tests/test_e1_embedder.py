@@ -18,6 +18,7 @@ from app.clients.embedder import (
     OpenAIEmbedder,
     build_embedder_from_model,
 )
+from app.core.config import settings
 from app.models.embedding_model import EmbeddingModel
 from app.utils.retry import with_backoff
 
@@ -229,7 +230,8 @@ def test_build_embedder_from_model_row_uses_row_config() -> None:
     emb = build_embedder_from_model(row)
     assert emb.model_name == "text-embedding-3-small"
     assert emb.dimension == 1536
-    assert emb.batch_size == 64
+    # default comes from settings (OPENAI__EMBEDDING_BATCH_SIZE, gateway-safe 25)
+    assert emb.batch_size == settings.openai.embedding_batch_size
 
     bad = EmbeddingModel(
         id="m2", name="x", provider="huggingface", model_name="bge", dimension=768

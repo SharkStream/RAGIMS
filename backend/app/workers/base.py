@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
 from app.core.logging import logger
 from app.models.base import utcnow_ms
+from app.models.document import Document
 from app.models.ingestion_job import IngestionJob
 from app.models.job_step import JobStep
 
@@ -100,8 +101,17 @@ def record_step(
 def finish_job(
     job_id: str, *, session_factory: Callable[[], Session] = SessionLocal
 ) -> None:
-    """Mark the job ``succeeded`` after its last step passes."""
+    """Mark the job ``succeeded`` after its last step passes.
+
+    A ``cancelled`` mark wins over this late success (cancel race at the
+    final step boundary): the job keeps ``cancelled`` and the document is
+    left untouched.
+    """
     with session_factory() as session:
+        job = session.get(IngestionJob, job_id)
+        if job is not None and job.status == "cancelled":
+            logger.info(f"[pipeline] job {job_id} cancelled — success not applied")
+            return
         _set_job_status(session, job_id, "succeeded")
         job = session.get(IngestionJob, job_id)
         if job is not None:
@@ -125,6 +135,16 @@ def _set_job_status(
         job.started_at = utcnow_ms()
     if status == "failed" and job.finished_at is None:
         job.finished_at = utcnow_ms()
+    # document terminal state: a finished job decides the doc's status —
+    # "processing" only until the first job settles. Cancelled jobs leave the
+    # doc untouched (retry may still succeed); a soft-deleted doc is never
+    # resurrected by a late-arriving job result.
+    if status in ("succeeded", "failed"):
+        doc_id = getattr(job, "doc_id", None)
+        if doc_id:
+            doc = session.get(Document, doc_id)
+            if doc is not None and doc.status != "deleted":
+                doc.status = status
 
 
 def _serialize(result: Any) -> dict[str, Any] | None:
