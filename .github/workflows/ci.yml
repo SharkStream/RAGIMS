@@ -1,0 +1,50 @@
+name: CI
+
+# I1 · lint + test gate. Integration tests (tests/test_i1_integration.py) are
+# marker-gated and skipped here; run them against a live stack with
+# RAGIMS_INTEGRATION=1 (see the file's docstring).
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Ruff
+        run: ruff check app tests scripts
+      - name: Black
+        run: black --check app tests
+      - name: Mypy
+        run: mypy app scripts/seed.py
+      - name: Unit tests (with coverage)
+        run: pytest tests -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=70
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install -g pnpm && pnpm install --no-frozen-lockfile
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+      - name: Build
+        run: pnpm build

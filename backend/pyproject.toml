@@ -66,3 +66,6 @@ plugins = ["pydantic.mypy"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = ["."]  # import "app" from backend/ without installing the package
+markers = [
+    "integration: live-stack end-to-end tests (opt-in via RAGIMS_INTEGRATION=1)",
+]

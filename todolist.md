@@ -280,29 +280,29 @@
 ## I. 测试、联调、验收（3-4 天）
 
 ### I1. 自动化测试
-- [ ] 后端单测：parsers、chunkers、embedder(mock)、API
-- [ ] 集成测试：上传 → 任务 → 入库 → 检索（用 docker-compose 依赖）
-- [ ] 覆盖率目标：核心模块 ≥ 70%
-- [ ] CI 跑通 lint + test
+- [x] 后端单测：parsers、chunkers、embedder(mock)、API
+- [x] 集成测试：上传 → 任务 → 入库 → 检索（marker-gated，真栈 2 passed）
+- [x] 覆盖率目标：核心模块 ≥ 70%（CI 强制 --cov-fail-under=70）
+- [x] CI 跑通 lint + test（.github/workflows/ci.yml）
 
 ### I2. 联调
-- [ ] 前端对接全部 API，修复字段/分页/错误码不一致
-- [ ] 大文件（如 50MB PDF）性能与超时验证
-- [ ] 并发上传 10 个文档，验证队列与幂等
+- [x] 前端对接全部 API，修复字段/分页/错误码不一致
+- [x] 大文件（如 50MB PDF）性能与超时验证（用户指示：跳过自动化，手工测；上限 413 已验证）
+- [x] 并发上传 10 个文档，验证队列与幂等
 
 ### I3. 部署与文档
-- [ ] `deploy/` 提供 compose 生产示例（含资源限制）
-- [ ] `README.md`：本地启动、环境变量、常见问题
-- [ ] `docs/api.md`：接口清单与示例（可由 OpenAPI 导出）
-- [ ] `docs/runbook.md`：任务失败排查、Qdrant 重建、MinIO 清理
+- [x] `deploy/` 提供 compose 生产示例（含资源限制）
+- [x] `README.md`：本地启动、环境变量、常见问题
+- [x] `docs/api.md`：接口清单与示例（可由 OpenAPI 导出）
+- [x] `docs/runbook.md`：任务失败排查、Qdrant 重建、MinIO 清理
 
 ### I4. MVP 验收清单
-- [ ] 上传 PDF/DOCX/TXT → 自动解析 → 切分 → 向量化 → 入库
-- [ ] 文档列表、任务状态、Chunk 预览、检索测试四类页面可用
-- [ ] 相同文件重复上传不重复处理（幂等）
-- [ ] 任务失败可见错误并支持重试
-- [ ] 检索结果按租户隔离、只返回 `is_latest` 数据
-- [ ] 全链路可在 docker-compose 环境一键复现
+- [x] 上传 PDF/DOCX/TXT → 自动解析 → 切分 → 向量化 → 入库
+- [x] 文档列表、任务状态、Chunk 预览、检索测试四类页面可用
+- [x] 相同文件重复上传不重复处理（幂等）
+- [x] 任务失败可见错误并支持重试
+- [x] 检索结果按租户隔离、只返回 `is_latest` 数据
+- [x] 全链路可在 docker-compose 环境一键复现
 
 ---
 
