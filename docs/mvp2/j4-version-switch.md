@@ -34,13 +34,42 @@
 
 ## 验收标准
 
-- [ ] v2 上传成功 → activate v1：`current_version=1`、v1 `is_latest=true`、检索命中 v1 内容（点 payload 已翻转）、chunk 预览/下载指向 v1
-- [ ] activate 后再次 activate 同版本 → 200 幂等
-- [ ] 未解析版本 activate → 409；跨租户 → 404
-- [ ] Qdrant 停机时 activate → 503 且 MySQL 未变（重启后可重试）
-- [ ] 版本级 DELETE：非 latest 可删（chunk/点/对象消失）；latest → 409
-- [ ] 对账脚本能发现 MySQL 与 Qdrant 的 is_latest 漂移
-- [ ] 单测 + 真栈集成（v1→v2→切回 v1 全链）
+- [x] v2 上传成功 → activate v1：`current_version=1`、v1 `is_latest=true`、检索命中 v1 内容（点 payload 已翻转）、chunk 预览/下载指向 v1
+- [x] activate 后再次 activate 同版本 → 200 幂等
+- [x] 未解析版本 activate → 409；跨租户 → 404
+- [x] Qdrant 停机时 activate → 503 且 MySQL 未变（重启后可重试）
+- [x] 版本级 DELETE：非 latest 可删（chunk/点/对象消失）；latest → 409
+- [x] 对账脚本能发现 MySQL 与 Qdrant 的 is_latest 漂移
+- [x] 单测 + 真栈集成（v1→v2→切回 v1 全链）
+
+## 产出物（J4 完成）
+
+| 位置 | 内容 |
+| :-- | :-- |
+| `app/api/documents.py` | `POST /documents/{id}/versions/{version}/activate`（幂等）+ `DELETE /documents/{id}/versions/{version}`（物理回收） |
+| `app/services/document_service.py` | `activate_document_version`：MySQL 指针翻转 **flush 后**才做 Qdrant 双 set_payload（先降后升，租户复合过滤），Qdrant 失败 → 整体 rollback + 503 `ERR_UNAVAILABLE`；`delete_document_version`：chunk 行 + job_steps/ingestion_jobs（FK 链）+ Qdrant 点 + MinIO raw/parsed 对象，latest → 409 |
+| `app/services/vectoring_service.py` | **latest 收敛修复**：`build_payload` 的 `is_latest` 改取 `version.is_latest`（原写死 true）；`upsert_doc_vectors` 在 latest 版本 upsert 前先 demote 该 doc 旧 latest 点——上传抢占 latest 的 MySQL 语义从此与 Qdrant 时序无关地收敛 |
+| `app/clients/qdrant_client.py` + `storage.py` | `set_payload_by_filter` / `scroll_points`（协议 + 实现双层） |
+| `scripts/reconcile.py` + `consistency.py` | 新对账规则 `find_is_latest_drift`：MySQL `current_version` vs Qdrant `is_latest=true` 点集逐文档比对，漂移报告（不自动修复） |
+
+## 验收证据（live 探针 real exit 0）
+
+| # | 场景 | 结果 |
+| :- | :--- | :--- |
+| 1 | 回滚前检索 | 命中 v2 内容 ✓ |
+| 2 | activate v1 | MySQL 翻转 + **检索立即命中 v1 内容**（payload 已翻转） |
+| 3 | 幂等再 activate | 200，指针不变 |
+| 4 | latest chunk 端点 | 指向 v1 |
+| 5 | Qdrant 停机（stub） | 503 + MySQL 指针原样 |
+| 6 | 版本级删除 v2 | chunk/点/对象/jobs 全回收，points == chunks |
+| 7 | 删 latest | 409 `ERR_CONFLICT` |
+| 8 | reconcile | `is_latest pointers aligned`（回滚后无漂移） |
+
+## 已知取舍（实现时确认/新增）
+
+- 上传 vN+1 即刻抢占 latest：Qdrant 旧点 demote 在上传事务后 best-effort 执行 + 流水线 upsert 前强制收敛（见 vectoring_service），失败由对账规则兜底报告。
+- activate 的双 set_payload 非原子：先降后升保证「不会双版本命中」，秒级检索空窗可接受。
+- 版本级删除同时回收该版本的 job 痕迹（ingestion_jobs/doc_version_id 是 FK，无回收站表）。
 
 ## 关联任务
 

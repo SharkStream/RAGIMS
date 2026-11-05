@@ -102,6 +102,7 @@ def test_document_detail_with_latest_version() -> None:
         "file_size": 42,
         "parse_status": "pending",
         "chunk_count": 0,
+        "embedding_model": "text-embedding-3-small",
         "is_latest": True,
         "created_at": NOW,
     }

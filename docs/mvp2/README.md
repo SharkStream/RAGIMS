@@ -2,6 +2,8 @@
 
 > 对应 `plan.md` 八/阶段 2「版本与增量（3-4 周）」。阶段代号 **J**，接续 MVP1 的 I 阶段。
 > 文档风格沿用 [docs/mvp1/](../mvp1/README.md)：每任务一个文件，目标 / 现状 / 实施步骤 / 验收标准 / 关联任务。
+>
+> **状态：✅ 全部完成（J1–J6）**——单测 287 passed、真栈集成 3 passed、live 探针 8 项全过、门禁全绿。
 
 ## 与 MVP1 的衔接：已有什么、缺什么
 
@@ -26,20 +28,21 @@
 
 ## 阶段 J · 版本与增量（预估 2.5-3.5 天）
 
-| 任务 | 文件 | 说明 |
-| :--- | :--- | :--- |
-| J1 | [增量上传（版本递增）](j1-incremental-upload.md) | 同名不同内容 → vN+1；幂等与冲突语义 |
-| J2 | [版本查询 API](j2-version-api.md) | 版本列表 / 版本详情 + chunks |
-| J3 | [元数据更新 API](j3-metadata-update.md) | PATCH title/tags/access_level，不重嵌入 |
-| J4 | [版本切换与回滚](j4-version-switch.md) | activate 旧版本；Qdrant payload 翻转；版本级软删 |
-| J5 | [前端版本视图](j5-frontend-version-ui.md) | 版本历史抽屉 Tab、切换/回滚按钮、元数据编辑 |
-| J6 | [测试与验收](j6-tests-acceptance.md) | 单测 + 真栈集成 + 阶段验收 |
+| 任务 | 文件 | 说明 | 状态 |
+| :--- | :--- | :--- | :-- |
+| J1 | [增量上传（版本递增）](j1-incremental-upload.md) | 同名不同内容 → vN+1；幂等与冲突语义 | ✅ |
+| J2 | [版本查询 API](j2-version-api.md) | 版本列表 / 版本详情 + chunks | ✅ |
+| J3 | [元数据更新 API](j3-metadata-update.md) | PATCH title/tags/access_level，不重嵌入 | ✅ |
+| J4 | [版本切换与回滚](j4-version-switch.md) | activate 旧版本；Qdrant payload 翻转；版本级软删 | ✅ |
+| J5 | [前端版本视图](j5-frontend-version-ui.md) | 版本历史抽屉 Tab、切换/回滚按钮、元数据编辑 | ✅ |
+| J6 | [测试与验收](j6-tests-acceptance.md) | 单测 + 真栈集成 + 阶段验收 | ✅ |
 
 **依赖**：J1 → J2（列表要能展示多版本）→ J4（切换）；J3 独立可并行；J5 依赖 J2/J3/J4 的 API；J6 收尾。关键路径 **J1 → J2 → J4 → J6**。
 
 ## 交付物（达成标志）
 
-- 同一文档名重复上传不同内容 → 版本线性递增（v1→v2→…），检索始终命中 latest
-- 任意历史版本可一键回滚（秒级，零重嵌入），回滚后检索/下载/chunk 预览全部指向回滚版本
-- title/tags/access_level 可更新且不触发任何任务队列
-- 前端可查看完整版本历史并执行切换
+- ✅ 同一文档名重复上传不同内容 → 版本线性递增（v1→v2→…），检索始终命中 latest
+- ✅ 任意历史版本可一键回滚（秒级，零重嵌入），回滚后检索/下载/chunk 预览全部指向回滚版本
+- ✅ title/tags/access_level 可更新且不触发任何任务队列
+- ✅ 前端可查看完整版本历史并执行切换
+- ✅ `scripts/reconcile.py` 版本漂移对账兜底（runbook §3）

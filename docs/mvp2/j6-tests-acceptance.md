@@ -23,11 +23,30 @@
 
 ## 验收标准（阶段 2 达成标志，对齐 plan.md）
 
-- [ ] 版本化文档管理：同名递增版本、历史可查可预览
-- [ ] 增量更新能力：新版本上传零手工干预、旧版本数据完整保留
-- [ ] 回滚秒级生效且检索同步（payload 一致性有对账兜底）
-- [ ] 元数据变更零重嵌入（job 数恒定可证）
-- [ ] 全量门禁：pytest（新增 ≥20 用例）、ruff/black/mypy、tsc、真栈集成全绿
+- [x] 版本化文档管理：同名递增版本、历史可查可预览
+- [x] 增量更新能力：新版本上传零手工干预、旧版本数据完整保留
+- [x] 回滚秒级生效且检索同步（payload 一致性有对账兜底）
+- [x] 元数据变更零重嵌入（job 数恒定可证）
+- [x] 全量门禁：pytest（新增 ≥20 用例）、ruff/black/mypy、tsc、真栈集成全绿
+
+## 产出物（J6 完成）
+
+| 位置 | 内容 |
+| :-- | :-- |
+| `tests/test_j1..j4_*.py` | 单测 **23 个**（J1 三分支+降级翻转 / J2 列表·详情·404·分页 / J3 PATCH 全语义+零 job / J4 activate·幂等·409·503·删除·openapi） |
+| `tests/test_j_integration.py` | 真栈集成 3 个（marker `integration` + `RAGIMS_INTEGRATION=1` 门控，同 I1）：增量上传全链断言、回滚全链（检索 v2→v1→v2 + payload 校验）、PATCH 零重嵌入；cleanup fixture 零残留（rows/点/两版本对象） |
+| `scripts/_j6e2e_tmp.py` | 阶段验收 live 探针：J1→J2→J3→J4 全链 HTTP 走查 8 项（real exit 0），含检索切换 + reconcile 对账 |
+| `docs/api.md` | 补 PATCH + versions 列表/详情/chunks + activate + 版本级 DELETE |
+| `docs/runbook.md` | 新增 §3「版本漂移对账」（成因/处置/runbook 命令） |
+
+## 验收证据（live）
+
+| 项 | 结果 |
+| :-- | :-- |
+| J6 全链探针 8 项（[1]-[8]）+ cleanup | real exit 0，ALL OK |
+| `pytest tests/test_j_integration.py -m integration`（真栈） | **3 passed** |
+| 全量 pytest（offline） | **287 passed, 2 skipped**（J 阶段单测 23 个 ≥ 20） |
+| ruff / black / mypy / tsc | 全绿 |
 
 ## 关联任务
 

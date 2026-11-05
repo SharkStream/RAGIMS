@@ -29,6 +29,7 @@ class FakeSession:
             version=1,
             tenant_id="t-1",
             access_level="internal",
+            is_latest=True,
             started_at=None,
             finished_at=None,
         )
@@ -79,6 +80,7 @@ def fake_storage(calls: list[str]):
         ensure_vector_collection=lambda dimension=None: calls.append("ensure"),
         upsert_points=lambda points: calls.append(f"upsert:{len(points)}"),
         delete_points_by_filter=lambda query_filter: calls.append("delete"),
+        set_payload_by_filter=lambda payload, query_filter: calls.append("demote"),
     )
 
 

@@ -118,6 +118,43 @@ class QdrantVectorStore:
         )
         return count
 
+    def set_payload_by_filter(
+        self,
+        payload: dict,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+    ) -> None:
+        """Overwrite payload keys on every point matching ``query_filter`` (J4).
+
+        Used by version activation to flip ``is_latest`` without touching
+        vectors: two calls (demote current latest, promote target version).
+        Not atomic across calls — the caller orders demote-before-promote so
+        the two versions never both match ``is_latest=true``.
+        """
+        self._client.set_payload(
+            collection_name=collection,
+            payload=payload,
+            points=query_filter,
+            wait=True,
+        )
+
+    def scroll_points(
+        self,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+        limit: int = 1000,
+        with_payload: bool = True,
+    ) -> list[qmodels.Record]:
+        """List points matching ``query_filter`` (reconcile scans, J4)."""
+        points, _offset = self._client.scroll(
+            collection_name=collection,
+            scroll_filter=query_filter,
+            limit=limit,
+            with_payload=with_payload,
+            with_vectors=False,
+        )
+        return list(points)
+
     def search(
         self,
         query_vector: list[float],

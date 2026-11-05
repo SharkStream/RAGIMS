@@ -25,18 +25,26 @@ from app.schemas.document import (
     DocumentDeleteResponse,
     DocumentDetail,
     DocumentOut,
+    DocumentPatchRequest,
     DocumentUploadResponse,
+    DocumentVersionDeleteResponse,
     DocumentVersionOut,
     JobCancelResponse,
 )
 from app.services.document_service import (
+    activate_document_version,
     cancel_job,
+    delete_document_version,
     get_document_or_404,
+    get_document_version,
     get_latest_version,
     list_document_chunks,
+    list_document_versions,
     list_documents,
+    list_version_chunks,
     reprocess_document,
     soft_delete_document,
+    update_document_meta,
     upload_document,
 )
 
@@ -117,6 +125,8 @@ def _to_out(doc: Document) -> DocumentOut:
         status=doc.status,
         current_version=doc.current_version,
         datasource_id=doc.datasource_id,
+        access_level=doc.access_level,
+        tags=list(doc.tags) if doc.tags else None,
         created_at=doc.created_at,
         updated_at=doc.updated_at,
     )
@@ -131,6 +141,7 @@ def _to_version_out(v: DocumentVersion) -> DocumentVersionOut:
         file_size=v.file_size,
         parse_status=v.parse_status,
         chunk_count=v.chunk_count,
+        embedding_model=v.embedding_model,
         is_latest=v.is_latest,
         created_at=v.created_at,
     )
@@ -195,6 +206,78 @@ def get_doc(
 
 
 @router.get(
+    "/{doc_id}/versions",
+    response_model=ApiResponse[PageResult[DocumentVersionOut]],
+    summary="Version history (newest first; version = in-document ordinal)",
+)
+def list_versions(
+    doc_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ApiResponse[PageResult[DocumentVersionOut]]:
+    """All versions of the document (J2), ``version`` DESC."""
+    rows, total = list_document_versions(
+        db, user.tenant_id, doc_id, page=page, page_size=page_size
+    )
+    return ok(
+        PageResult.of(
+            [_to_version_out(v) for v in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+    )
+
+
+@router.get(
+    "/{doc_id}/versions/{version}",
+    response_model=ApiResponse[DocumentVersionOut],
+    summary="One version by in-document ordinal (not a global ID)",
+)
+def get_version(
+    doc_id: str,
+    version: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[DocumentVersionOut]:
+    """404 when the document or the ordinal does not exist (J2)."""
+    row = get_document_version(db, user.tenant_id, doc_id, version)
+    return ok(_to_version_out(row))
+
+
+@router.get(
+    "/{doc_id}/versions/{version}/chunks",
+    response_model=ApiResponse[PageResult[ChunkOut]],
+    summary="Chunks of an arbitrary version (history preview)",
+)
+def get_version_chunks(
+    doc_id: str,
+    version: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ApiResponse[PageResult[ChunkOut]]:
+    """Same shape as the latest-version chunk list, scoped to ``version`` (J2)."""
+    rows, total = list_version_chunks(
+        db, user.tenant_id, doc_id, version, page=page, page_size=page_size
+    )
+    items = [
+        ChunkOut(
+            chunk_index=c.chunk_index,
+            text=c.text,
+            token_count=c.token_count,
+            page=c.page,
+            section=c.section,
+        )
+        for c in rows
+    ]
+    return ok(PageResult.of(items, total=total, page=page, page_size=page_size))
+
+
+@router.get(
     "/{doc_id}/chunks",
     response_model=ApiResponse[PageResult[ChunkOut]],
     summary="Chunks of the current version, ordered by chunk_index",
@@ -221,6 +304,74 @@ def get_chunks(
         for c in rows
     ]
     return ok(PageResult.of(items, total=total, page=page, page_size=page_size))
+
+
+@router.patch(
+    "/{doc_id}",
+    response_model=ApiResponse[DocumentDetail],
+    summary="Update metadata (title/tags/access_level/datasource) — no re-embed",
+)
+def patch_doc(
+    doc_id: str,
+    body: DocumentPatchRequest,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[DocumentDetail]:
+    """Metadata-only PATCH (J3): one row, no job, no chunk/vector change.
+
+    409 ``ERR_CONFLICT`` for deleted documents; 404 cross-tenant; 422 for
+    validation and unknown fields.
+    """
+    doc = update_document_meta(db, user.tenant_id, doc_id, body)
+    version = get_latest_version(db, doc.id)
+    return ok(
+        DocumentDetail(
+            **_to_out(doc).model_dump(),
+            latest_version=(_to_version_out(version) if version is not None else None),
+        )
+    )
+
+
+@router.post(
+    "/{doc_id}/versions/{version}/activate",
+    response_model=ApiResponse[DocumentDetail],
+    summary="Activate a historical version as latest (= rollback, no re-embed)",
+)
+def activate_version(
+    doc_id: str,
+    version: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[DocumentDetail]:
+    """MySQL pointer flip + Qdrant payload flip (J4), idempotent.
+
+    409 when the version is unparsed or the document is deleted; 503 with
+    MySQL rolled back when Qdrant is unreachable.
+    """
+    doc = activate_document_version(db, user.tenant_id, doc_id, version)
+    row = get_latest_version(db, doc.id)
+    return ok(
+        DocumentDetail(
+            **_to_out(doc).model_dump(),
+            latest_version=(_to_version_out(row) if row is not None else None),
+        )
+    )
+
+
+@router.delete(
+    "/{doc_id}/versions/{version}",
+    response_model=ApiResponse[DocumentVersionDeleteResponse],
+    summary="Reclaim one historical version (chunks + points + objects)",
+)
+def delete_version(
+    doc_id: str,
+    version: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[DocumentVersionDeleteResponse]:
+    """Physical reclaim of a non-latest version (J4); latest → 409."""
+    row = delete_document_version(db, user.tenant_id, doc_id, version)
+    return ok(DocumentVersionDeleteResponse(doc_id=doc_id, version=row.version))
 
 
 @router.delete(

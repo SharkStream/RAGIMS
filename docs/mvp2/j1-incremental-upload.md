@@ -26,12 +26,33 @@
 
 ## 验收标准
 
-- [ ] 同名 v1 上传 → v2 上传：一个 doc、两个 version 行、v1 `is_latest=false`、`current_version=2`
-- [ ] v1 与 v2 的 MinIO 对象同时存在（路径含 `/1/`、`/2/`）
-- [ ] 同内容重复上传 v2 → duplicate=true，版本数不变
-- [ ] 并发同 hash 双传：恰好 1 个新版本 + 1 个 duplicate（I2 竞态关闭）
-- [ ] 软删文档同名上传 → 新文档（不受 deleted 行影响）
-- [ ] 单测覆盖三分支 + 并发；真栈集成验证
+- [x] 同名 v1 上传 → v2 上传：一个 doc、两个 version 行、v1 `is_latest=false`、`current_version=2`
+- [x] v1 与 v2 的 MinIO 对象同时存在（路径含 `/1/`、`/2/`）
+- [x] 同内容重复上传 v2 → duplicate=true，版本数不变
+- [x] 并发同 hash 双传：恰好 1 个新版本 + 1 个 duplicate（I2 竞态关闭）
+- [x] 软删文档同名上传 → 新文档（不受 deleted 行影响）
+- [x] 单测覆盖三分支 + 并发；真栈集成验证
+
+## 产出物（J1 完成）
+
+| 文件 | 内容 |
+| :-- | :-- |
+| `alembic/versions/0002_documents_active_uniq.py` | **生成列 `active_uniq`**（VIRTUAL，live 行恒 'ACTIVE'、deleted 行取自身 id）+ `UNIQUE(tenant_id, file_name, active_uniq)` —— DB 级保证「同名 live 文档唯一」，软删历史不占名。已 `alembic upgrade head` 实测（SHOW CREATE TABLE 验证） |
+| `app/models/document.py` | `active_uniq` Computed 列 + UniqueConstraint 声明 |
+| `app/services/document_service.py` | `_find_version_head`（**FOR UPDATE 行锁**）+ 三分支重构：无 head → `_create_document`（原 C1 路径）；head+同 hash → `_duplicate_outcome`；head+不同 hash → **`_append_version`**（vN+1、旧 latest 翻 false、doc 回 processing、路径含版本段）。**IntegrityError / gap-lock 死锁（MySQL 1213/1205）→ rollback + 单次重解析**，彻底关闭 I2 竞态窗口 |
+
+## 验收证据（live 探针 real exit 0）
+
+| # | 场景 | 结果 |
+| :- | :--- | :--- |
+| 1 | 首传 | v1，新 doc |
+| 2 | 同名不同内容 | version=2，`current_version=2`，v1 latest=false / v2 latest=true |
+| 3 | 同内容重传 | duplicate=true，版本数不变 |
+| 4 | **并发同 hash 首传** | **1 doc，flags=[False, True]**（竞态关闭） |
+| 5 | **并发不同 hash** | **版本精确 [1, 2]**（gap-lock 死锁自动重试生效） |
+| 6 | v2 流水线 | succeeded |
+
+离线单测 `tests/test_j1_upload_versions.py`：4 个（三分支路由 + append 副作用形状）。
 
 ## 关联任务
 

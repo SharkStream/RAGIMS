@@ -30,6 +30,7 @@ class FakeVectorStore:
     def __init__(self, fail_times: int = 0):
         self.ensured: list[tuple[str, int | None]] = []
         self.upserted: list[list] = []
+        self.payload_sets: list[tuple[dict, object]] = []
         self.fail_times = fail_times
         self.calls = 0
 
@@ -43,6 +44,9 @@ class FakeVectorStore:
             raise ConnectionError("qdrant hiccup")
         self.upserted.append(list(points))
 
+    def set_payload_by_filter(self, payload, query_filter) -> None:
+        self.payload_sets.append((payload, query_filter))
+
 
 def fake_storage(store: FakeVectorStore) -> SimpleNamespace:
     return SimpleNamespace(
@@ -50,6 +54,9 @@ def fake_storage(store: FakeVectorStore) -> SimpleNamespace:
             "documents", dimension
         ),
         upsert_points=lambda points: store.upsert_points(points, "documents"),
+        set_payload_by_filter=lambda payload, query_filter: store.set_payload_by_filter(
+            payload, query_filter
+        ),
     )
 
 
@@ -62,7 +69,9 @@ def make_rows(n: int = 3):
         file_type="txt",
         access_level="internal",
     )
-    version = DocumentVersion(id="v1", doc_id="d1", version=2, content_hash="h")
+    version = DocumentVersion(
+        id="v1", doc_id="d1", version=2, content_hash="h", is_latest=True
+    )
     chunks = [
         Chunk(
             doc_version_id="v1",

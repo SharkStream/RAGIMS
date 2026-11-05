@@ -74,6 +74,20 @@ class VectorStore(Protocol):
         collection: str = COLLECTION_NAME,
     ) -> int: ...
 
+    def set_payload_by_filter(
+        self,
+        payload: dict,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+    ) -> None: ...
+
+    def scroll_points(
+        self,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+        limit: int = 1000,
+    ) -> list[qmodels.Record]: ...
+
     def search(
         self,
         query_vector: list[float],
@@ -159,6 +173,24 @@ class StorageService:
     ) -> int:
         """Delete points matching a filter; return the pre-delete count."""
         return self.vectors.delete_by_filter(query_filter, collection)
+
+    def set_payload_by_filter(
+        self,
+        payload: dict,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+    ) -> None:
+        """Overwrite payload keys on all points matching a filter (J4 activate)."""
+        self.vectors.set_payload_by_filter(payload, query_filter, collection)
+
+    def scroll_points(
+        self,
+        query_filter: qmodels.Filter,
+        collection: str = COLLECTION_NAME,
+        limit: int = 1000,
+    ) -> list[qmodels.Record]:
+        """List points matching a filter, payload included (J4 reconcile)."""
+        return self.vectors.scroll_points(query_filter, collection, limit)
 
     def search_vectors(
         self,

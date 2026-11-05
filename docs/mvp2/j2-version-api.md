@@ -18,11 +18,30 @@
 
 ## 验收标准
 
-- [ ] J1 造出的 v1/v2 文档：列表返回 2 行、`is_latest` 标注正确、倒序
-- [ ] 跨租户访问他人 doc → 404（`ERR_NOT_FOUND`）
-- [ ] 不存在的版本号 → 404
-- [ ] chunks 按请求的版本返回（历史版本可预览）
-- [ ] 单测覆盖分页/404/租户隔离；openapi 断言新路由
+- [x] J1 造出的 v1/v2 文档：列表返回 2 行、`is_latest` 标注正确、倒序
+- [x] 跨租户访问他人 doc → 404（`ERR_NOT_FOUND`）
+- [x] 不存在的版本号 → 404
+- [x] chunks 按请求的版本返回（历史版本可预览）
+- [x] 单测覆盖分页/404/租户隔离；openapi 断言新路由
+
+## 产出物（J2 完成）
+
+| 位置 | 内容 |
+| :-- | :-- |
+| `app/api/documents.py` | 3 个新路由：`GET /documents/{id}/versions`（分页、version DESC）、`GET /documents/{id}/versions/{version}`（按文档内序号查详情）、`GET /documents/{id}/versions/{version}/chunks`（历史版本 chunks 预览，复用 ChunkOut 分页形状）；现有 `GET /documents/{id}/chunks`（只看 latest）保持不变 |
+| `app/services/document_service.py` | `list_document_versions` / `get_document_version`（404 语义：doc 缺失/跨租户/序号不存在统一 `ERR_NOT_FOUND`）/ `list_version_chunks` |
+| `app/schemas/document.py` | `DocumentVersionOut` 补 `embedding_model`（可空，兼容旧行）；detail 直接复用该 schema |
+
+## 验收证据（live 探针 real exit 0）
+
+| # | 场景 | 结果 |
+| :- | :--- | :--- |
+| 1 | 双版本文档列表 | 2 行、version DESC、v2 latest=true / v1 false、`file_path` 含 `/1/` `/2/` 段 |
+| 2 | 按序号详情 + 缺失序号 | v1 详情 200；version=9 → 404 `ERR_NOT_FOUND` |
+| 3 | 租户隔离 | 未知 doc → 404 |
+| 4 | 历史版本 chunks | v1 与 v2 各自 chunk 列表独立，latest 端点 total 与 v2 一致（无回归） |
+
+离线单测 `tests/test_j2_versions.py`：4 个（列表 DESC/字段、序号详情、404、版本 chunks 分页 + 参数转发）。
 
 ## 关联任务
 

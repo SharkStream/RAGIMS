@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import CHAR, JSON, ForeignKeyConstraint, Index, String
+from sqlalchemy import (
+    CHAR,
+    JSON,
+    Computed,
+    ForeignKeyConstraint,
+    Index,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import MYSQL_TABLE_KWARGS, Base, TimestampMixin, UUIDPkMixin
@@ -22,6 +30,14 @@ class Document(UUIDPkMixin, TimestampMixin, Base):
     __tablename__ = "documents"
     __table_args__ = (
         Index("idx_documents_tenant_status", "tenant_id", "status"),
+        # J1: one live document per (tenant, file_name). Deleted rows exempt
+        # themselves from the unique key by using their own id as the flag.
+        UniqueConstraint(
+            "tenant_id",
+            "file_name",
+            "active_uniq",
+            name="uq_documents_active_name",
+        ),
         ForeignKeyConstraint(
             ["tenant_id"],
             ["tenants.id"],
@@ -56,6 +72,14 @@ class Document(UUIDPkMixin, TimestampMixin, Base):
     current_version: Mapped[int] = mapped_column(nullable=False, server_default="1")
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="processing"
+    )
+    # J1 soft-delete-aware uniqueness flag (VIRTUAL generated column):
+    # live rows all yield 'ACTIVE' (so a live name is unique per tenant),
+    # deleted rows yield their own id (so history never collides).
+    active_uniq: Mapped[str] = mapped_column(
+        CHAR(36),
+        Computed("IF(`status` = 'deleted', `id`, 'ACTIVE')", persisted=False),
+        nullable=False,
     )
 
     tenant: Mapped[Tenant] = relationship(back_populates="documents")

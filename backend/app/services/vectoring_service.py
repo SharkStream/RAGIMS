@@ -36,13 +36,17 @@ def point_id_for(doc_version_id: str, chunk_index: int) -> str:
 
 
 def build_payload(doc: Document, version: DocumentVersion, chunk: Chunk) -> dict:
-    """Retrieval payload (E2 step 2) — mirrors the ``chunks`` row."""
+    """Retrieval payload (E2 step 2) — mirrors the ``chunks`` row.
+
+    ``is_latest`` follows the version row (J4): upserting a historical
+    version (e.g. reconcile re-embed) never claims the latest pointer.
+    """
     return {
         "tenant_id": doc.tenant_id,
         "doc_id": doc.id,
         "doc_version_id": version.id,
         "version": version.version,
-        "is_latest": True,
+        "is_latest": bool(version.is_latest),
         "is_deleted": False,
         "access_level": doc.access_level,
         "chunk_index": chunk.chunk_index,
@@ -91,6 +95,29 @@ def upsert_doc_vectors(
 
     storage = storage or get_storage()
     storage.ensure_vector_collection(dimension=len(vectors[0]))
+
+    # J4 latest-pointer convergence: before a LATEST version's points go
+    # live, demote any older points still carrying is_latest=true. This makes
+    # the MySQL ``is_latest`` flip (upload-grabs-latest, activate) hold no
+    # matter when the pipeline runs relative to the upload — idempotent, and
+    # skipped for first uploads / historical-version repairs (no claim).
+    if version.is_latest:
+        storage.set_payload_by_filter(
+            {"is_latest": False},
+            qmodels.Filter(
+                must=[
+                    qmodels.FieldCondition(
+                        key="tenant_id", match=qmodels.MatchValue(value=doc.tenant_id)
+                    ),
+                    qmodels.FieldCondition(
+                        key="doc_id", match=qmodels.MatchValue(value=doc.id)
+                    ),
+                    qmodels.FieldCondition(
+                        key="is_latest", match=qmodels.MatchValue(value=True)
+                    ),
+                ]
+            ),
+        )
 
     points = [
         build_point(doc, version, chunk, vector)

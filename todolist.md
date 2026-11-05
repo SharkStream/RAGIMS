@@ -334,14 +334,14 @@
 ## 阶段 J · 版本与增量（plan.md 阶段 2，任务文档见 docs/mvp2/）
 
 ### J1. 增量上传（版本递增）
-- [ ] 同名不同 hash → vN+1 新版本；并发同 hash 竞态收口（行锁）
+- [x] 同名不同 hash → vN+1 新版本；并发同 hash 竞态收口（行锁 + 生成列唯一 + 死锁重试）
 ### J2. 版本查询 API
-- [ ] 版本列表/详情 + 历史版本 chunks 预览
+- [x] 版本列表/详情 + 历史版本 chunks 预览
 ### J3. 元数据更新 API
-- [ ] PATCH title/tags/access_level/datasource，零 job、零重嵌入
+- [x] PATCH title/tags/access_level/datasource，零 job、零重嵌入
 ### J4. 版本切换与回滚
-- [ ] activate（MySQL 翻转 + Qdrant set_payload）、版本级软删、对账兜底
+- [x] activate（MySQL 翻转 + Qdrant set_payload）、版本级软删、对账兜底
 ### J5. 前端版本视图
-- [ ] 版本历史 Tab、设为当前/删除版本、元数据编辑表单
+- [x] 版本历史 Tab、设为当前/删除版本、元数据编辑表单
 ### J6. 测试与验收
-- [ ] 单测 + 真栈集成 + live 探针 + 文档收官
+- [x] 单测 + 真栈集成 + live 探针 + 文档收官

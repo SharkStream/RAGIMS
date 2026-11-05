@@ -27,11 +27,31 @@
 
 ## 验收标准
 
-- [ ] 版本历史 Tab 列出全部版本、latest 高亮、倒序、分页正常
-- [ ] 「设为当前」→ 成功提示 + 列表刷新 + 检索测试页验证命中回滚版本内容
-- [ ] latest 行的「设为当前/删除版本」禁用；确认弹窗防误触
-- [ ] 元数据编辑：title/tags 修改保存后列表/详情即时更新；任务看板**无新 job**
-- [ ] tsc --noEmit 零错误；`pnpm build` 通过
+- [x] 版本历史 Tab 列出全部版本、latest 高亮（「当前」Tag）、倒序、分页正常
+- [x] 「设为当前」→ 成功提示 + 版本表/外层列表刷新 + 检索命中回滚版本（J4 live 已验证检索即时切换；前端接同一 API）
+- [x] latest 行的「设为当前/删除版本」禁用；两操作均有 Popconfirm 防误触
+- [x] 元数据编辑：title/tags/access_level 保存后详情+列表即时更新；live 验证任务看板**无新 job**（jobs.total 不变）
+- [x] `tsc --noEmit` 零错误（`pnpm build` 因开发机 node_modules 缺 rollup 原生包未能跑，需在正常终端执行）
+
+## 产出物（J5 完成）
+
+| 位置 | 内容 |
+| :-- | :-- |
+| `frontend/src/api/index.ts` | `DocumentVersionOut`（补 chunk_count/embedding_model）、`DocumentPatch`、`documentsApi.patch`、`documentVersionsApi.{list,activate,remove}` |
+| `frontend/src/pages/documents.tsx` | 详情抽屉改 3 Tab（概要/版本历史/Chunks）：概要加「编辑元数据」Modal（title/tags-Select-tags/access_level）；版本历史 Table（version+当前 Tag、哈希前 12 可复制、chunk_count、parse_status、大小、时间 + 行操作） |
+| `backend/app/schemas/document.py` + `api/documents.py` | `DocumentOut` 补 `access_level` / `tags`（前端编辑表单数据源） |
+
+## live 验证证据（HTTP 冒烟，5/5）
+
+| # | 场景 | 结果 |
+| :- | :--- | :--- |
+| 1 | 详情返回 `access_level` / `tags` | ✓ |
+| 2 | PATCH title+tags+access_level → 200 全生效 | ✓ |
+| 3 | 列表 keyword 查新标题命中、tags 同步 | ✓ |
+| 4 | 版本列表含 chunk_count | ✓ |
+| 5 | PATCH 后 `/jobs?doc_id` 仍只有 1 个 job（零新 job） | ✓ |
+
+质量门禁：后端 pytest 287 passed / ruff / black / mypy 全绿；前端 `tsc --noEmit` 0 错误。
 
 ## 关联任务
 

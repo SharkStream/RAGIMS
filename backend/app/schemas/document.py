@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DocumentUploadResponse(BaseModel):
@@ -40,6 +41,8 @@ class DocumentOut(BaseModel):
     status: str
     current_version: int
     datasource_id: str
+    access_level: str = "internal"
+    tags: list[str] | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -54,6 +57,7 @@ class DocumentVersionOut(BaseModel):
     file_size: int
     parse_status: str
     chunk_count: int
+    embedding_model: str | None = None
     is_latest: bool
     created_at: datetime
 
@@ -79,6 +83,38 @@ class DocumentDeleteResponse(BaseModel):
 
     doc_id: str
     status: str = "deleted"
+
+
+class DocumentVersionDeleteResponse(BaseModel):
+    """Payload of ``DELETE /documents/{id}/versions/{version}`` (J4 reclaim)."""
+
+    doc_id: str
+    version: int
+    status: str = "deleted"
+
+
+class DocumentPatchRequest(BaseModel):
+    """``PATCH /documents/{id}`` body (J3) — metadata only, all fields optional.
+
+    At least one field must be sent; ``null`` values are skipped (no clearing
+    of ``title``). ``tags`` replaces the whole list; unknown fields are 422.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=512)
+    tags: list[str] | None = Field(
+        default=None,
+        description="Whole-list replacement of the document tags",
+    )
+    access_level: Literal["internal", "confidential", "public"] | None = None
+    datasource_id: str | None = None
+
+    @model_validator(mode="after")
+    def _at_least_one_field(self) -> DocumentPatchRequest:
+        if not self.model_fields_set:
+            raise ValueError("at least one field must be provided")
+        return self
 
 
 # --------------------------------------------------------------------------- #

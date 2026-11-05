@@ -15,13 +15,19 @@
 
 | 方法 | 路径 | 说明 |
 | :-- | :-- | :-- |
-| POST | `/api/documents/upload` | Upload a document (pdf/docx/txt/md, idempotent on content hash) |
+| POST | `/api/documents/upload` | Upload a document (pdf/docx/txt/md, idempotent on content hash); same name + new hash appends vN+1 (J1) |
 | GET | `/api/documents` | List documents (filter / search / paginate; excludes deleted) |
 | GET | `/api/documents/{doc_id}` | Document detail with its latest version |
+| PATCH | `/api/documents/{doc_id}` | Metadata-only update: title / tags / access_level / datasource_id — zero jobs, zero re-embed (J3) |
 | DELETE | `/api/documents/{doc_id}` | Soft delete (status=deleted; async object cleanup is out of MVP) |
 | GET | `/api/documents/{doc_id}/chunks` | Chunks of the current version, ordered by chunk_index |
 | POST | `/api/documents/{doc_id}/reprocess` | Create a reprocess job for the latest version and dispatch it |
 | POST | `/api/documents/{doc_id}/jobs/{job_id}/cancel` | Cooperatively cancel a pending/running job |
+| GET | `/api/documents/{doc_id}/versions` | Version history, newest first, paged (J2) |
+| GET | `/api/documents/{doc_id}/versions/{version}` | Version detail by ordinal (J2) |
+| GET | `/api/documents/{doc_id}/versions/{version}/chunks` | Chunks of a specific version, paged (J2) |
+| POST | `/api/documents/{doc_id}/versions/{version}/activate` | Set a parsed historical version as latest (= rollback): MySQL flip + Qdrant payload flip, idempotent, 503 on Qdrant failure (J4) |
+| DELETE | `/api/documents/{doc_id}/versions/{version}` | Physically reclaim a non-latest version: chunk rows + Qdrant points + MinIO raw/parsed objects + job trail; latest → 409 (J4) |
 
 ## 任务（G1）
 

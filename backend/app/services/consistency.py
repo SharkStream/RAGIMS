@@ -54,6 +54,45 @@ def find_missing_point_ids(session: Session) -> list[Chunk]:
     )
 
 
+def find_is_latest_drift(
+    session: Session, *, storage: StorageService | None = None
+) -> list[dict[str, str]]:
+    """Report MySQL ``current_version`` vs Qdrant ``is_latest`` drift (J4).
+
+    For every live parsed document, the points carrying ``is_latest=true``
+    must belong to ``documents.current_version``. Returns one entry per
+    drifted document (never repairs — activation is an explicit API call).
+    """
+    storage = storage or get_storage()
+    drift: list[dict[str, str]] = []
+    docs = session.scalars(select(Document).where(Document.status != "deleted")).all()
+    for doc in docs:
+        latest_points = storage.scroll_points(
+            qmodels.Filter(
+                must=[
+                    qmodels.FieldCondition(
+                        key="doc_id", match=qmodels.MatchValue(value=doc.id)
+                    ),
+                    qmodels.FieldCondition(
+                        key="is_latest", match=qmodels.MatchValue(value=True)
+                    ),
+                ]
+            )
+        )
+        versions = {p.payload.get("version") for p in latest_points if p.payload}
+        if versions == {doc.current_version}:
+            continue
+        drift.append(
+            {
+                "doc_id": doc.id,
+                "mysql_current_version": str(doc.current_version),
+                "qdrant_is_latest_versions": ", ".join(sorted(str(v) for v in versions))
+                or "[]",
+            }
+        )
+    return drift
+
+
 def repair_missing_point_ids(
     session: Session, *, storage: StorageService | None = None, batch_size: int = 500
 ) -> dict[str, int]:

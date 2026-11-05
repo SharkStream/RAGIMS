@@ -11,6 +11,9 @@ export interface DocumentOut {
   file_type: string;
   status: string;
   current_version: number;
+  datasource_id: string;
+  access_level: string;
+  tags: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,8 +25,18 @@ export interface DocumentVersionOut {
   file_path: string;
   file_size: number;
   parse_status: string;
+  chunk_count: number;
+  embedding_model: string | null;
   is_latest: boolean;
   created_at: string;
+}
+
+/** J3 metadata patch — all fields optional, null values are skipped. */
+export interface DocumentPatch {
+  title?: string;
+  tags?: string[];
+  access_level?: "internal" | "confidential" | "public";
+  datasource_id?: string;
 }
 
 export interface DocumentDetail extends DocumentOut {
@@ -137,6 +150,28 @@ export const documentsApi = {
   chunks: (docId: string, params: { page?: number; page_size?: number }) =>
     http.get<never, PageResult<ChunkOut>>(`/documents/${docId}/chunks`, { params }),
   remove: (docId: string) => http.delete<never, { doc_id: string }>(`/documents/${docId}`),
+  /** J3 metadata-only update (no job, no re-embed). */
+  patch: (docId: string, patch: DocumentPatch) =>
+    http.patch<never, DocumentDetail>(`/documents/${docId}`, patch),
+};
+
+// ---- document versions (J2 list / J4 activate + reclaim) ----
+export const documentVersionsApi = {
+  list: (docId: string, params: { page?: number; page_size?: number }) =>
+    http.get<never, PageResult<DocumentVersionOut>>(
+      `/documents/${docId}/versions`,
+      { params },
+    ),
+  /** Activate a historical version as latest (= rollback, no re-embed). */
+  activate: (docId: string, version: number) =>
+    http.post<never, DocumentDetail>(
+      `/documents/${docId}/versions/${version}/activate`,
+    ),
+  /** Physically reclaim a non-latest version (chunks + points + objects). */
+  remove: (docId: string, version: number) =>
+    http.delete<never, { doc_id: string; version: number; status: string }>(
+      `/documents/${docId}/versions/${version}`,
+    ),
 };
 
 // ---- jobs (G1) ----

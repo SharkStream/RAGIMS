@@ -60,7 +60,24 @@ curl -X POST http://127.0.0.1:8000/api/jobs/{job_id}/cancel
 
 > 注意：重建后**必须**回填，否则检索为空；回填期间检索结果不完整属预期。
 
-## 3. MinIO 清理
+## 3. 版本漂移对账（J4）
+
+**何时**：回滚/切换后检索结果与预期版本不符；或例行检查 MySQL 指针与 Qdrant 一致性。
+
+```powershell
+# 只读对账：逐文档比对 documents.current_version 与 Qdrant is_latest=true 点集
+$env:PYTHONPATH='D:\Projects\RAGIMS\backend'
+.\env\Scripts\python.exe scripts\reconcile.py
+# 干净 → "reconcile: is_latest pointers aligned (MySQL == Qdrant)"
+# 漂移 → WARNING 列出 doc_id + 两侧指针，exit 1（可接监控/CI）
+```
+
+**漂移成因与处置**：
+- 上传抢占 latest 后 Qdrant 旧点 demote 失败（best-effort，reconcile 兜底）→ 重跑流水线收敛（对受影响 doc `POST /reprocess`）或对目标版本 `POST .../versions/{v}/activate`（幂等，会重放双 set_payload）。
+- activate 中途 Qdrant 断连（MySQL 已回滚，503）→ 恢复 Qdrant 后重试 activate。
+- 历史版本修复/重嵌入造成的双 latest → 以 MySQL `current_version` 为准，用 activate 纠偏。
+
+## 4. MinIO 清理
 
 ```powershell
 # 对象键结构：
@@ -77,7 +94,7 @@ mc ls ragims/parsed-text/ | ForEach-Object { ... }   # 与 document_versions 比
 
 **误删恢复**：MinIO 无版本化（MVP），raw 对象删除不可恢复；parsed 文本可由 raw 重新解析生成（重跑 reprocess）。
 
-## 4. 常用命令速查
+## 5. 常用命令速查
 
 ```powershell
 # 服务
@@ -99,7 +116,7 @@ $env:RAGIMS_INTEGRATION='1'; pytest tests\test_i1_integration.py -q    # 真栈�
 .\env\Scripts\mypy.exe app scripts/seed.py --cache-dir $env:TEMP\mypy_cache_ragims
 ```
 
-## 5. 紧急预案
+## 6. 紧急预案
 
 - **Redis 宕机**：上传接口 503（`ERR_UNAVAILABLE`），前端友好提示；恢复后 pending 任务自动继续消费。
 - **MySQL 宕机**：全接口 500；恢复后重试上传（幂等保证不重复）。
