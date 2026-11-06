@@ -31,6 +31,7 @@ from app.schemas.document import (
     DocumentVersionDeleteResponse,
     DocumentVersionOut,
     JobCancelResponse,
+    QualityCheckOut,
 )
 from app.services.audit_service import (
     ACTIONS_DOC_ACTIVATE,
@@ -49,6 +50,7 @@ from app.services.document_service import (
     get_document_version,
     get_latest_version,
     list_document_chunks,
+    list_document_quality,
     list_document_versions,
     list_documents,
     list_version_chunks,
@@ -298,6 +300,33 @@ def get_version_chunks(
         for c in rows
     ]
     return ok(PageResult.of(items, total=total, page=page, page_size=page_size))
+
+
+@router.get(
+    "/{doc_id}/quality",
+    response_model=ApiResponse[list[QualityCheckOut]],
+    summary="Quality checks per version, newest version first (L2)",
+)
+def get_quality(
+    doc_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[CurrentUser, Depends(get_current_user)],
+) -> ApiResponse[list[QualityCheckOut]]:
+    """Pipeline quality scores (empty/duplicate/length_spread), lower=better."""
+    rows = list_document_quality(db, user.tenant_id, doc_id)
+    return ok(
+        [
+            QualityCheckOut(
+                version=int(r["version"]),
+                doc_version_id=str(r["doc_version_id"]),
+                check_type=str(r["check_type"]),
+                score=float(r["score"]),
+                detail=r.get("detail"),
+                created_at=r.get("created_at"),
+            )
+            for r in rows
+        ]
+    )
 
 
 @router.get(

@@ -36,6 +36,7 @@ from app.services.chunk_store import (
 )
 from app.services.cleaning import clean
 from app.services.parsing_service import parse_and_store
+from app.services.quality_service import best_effort_quality_checks
 from app.services.storage import get_storage
 from app.services.vectoring_service import upsert_doc_vectors
 from app.workers.base import (
@@ -136,13 +137,31 @@ def run_pipeline(
     if embedder is None:
         with session_factory() as session:
             embedder = get_default_embedder(session)
+
+    # M2: capture usage as a structured step output (token_count etc.) —
+    # returning the raw (vectors, usage) tuple would repr-bomb job_steps.output
+    # and lose the token accounting.
+    embed_summary: dict[str, Any] = {}
+
+    def _embed_and_record() -> dict[str, Any]:
+        vectors, usage = embedder.embed_with_usage([r.text for r in rows])
+        embed_summary["vectors"] = vectors
+        embed_summary["usage"] = usage
+        return {
+            "token_count": usage.token_count,
+            "chunk_count": len(rows),
+            "vector_dim": len(vectors[0]) if vectors else 0,
+            "model": getattr(embedder, "model_name", None),
+        }
+
     with record_step(
         job_id,
         "embed",
-        lambda: embedder.embed_with_usage([r.text for r in rows]),
+        _embed_and_record,
         session_factory=session_factory,
-    ) as embedded:
-        vectors, usage = embedded
+    ):
+        vectors = embed_summary["vectors"]
+        usage = embed_summary["usage"]
 
     with record_step(
         job_id,
@@ -169,6 +188,13 @@ def run_pipeline(
         version,
         embedding_model=embedder.model_name,
         chunk_count=len(rows),
+    )
+    # L2: score the version's chunks right after finalize (best-effort —
+    # a checker crash must never fail an otherwise successful ingest).
+    _in_session(
+        session_factory,
+        best_effort_quality_checks,
+        version.id,
     )
     finish_job(job_id, session_factory=session_factory)
     logger.info(

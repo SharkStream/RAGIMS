@@ -8,8 +8,10 @@
 import { ProLayout } from "@ant-design/pro-components";
 import {
   CloudUploadOutlined,
+  DashboardOutlined,
   FileTextOutlined,
   LogoutOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   SettingOutlined,
   UnorderedListOutlined,
@@ -21,6 +23,8 @@ import type { ReactNode } from "react";
 import DocumentsPage from "./pages/documents";
 import JobsPage from "./pages/jobs";
 import LoginPage from "./pages/login";
+import MonitoringPage from "./pages/monitoring";
+import QualityPage from "./pages/quality";
 import SearchTestPage from "./pages/search-test";
 import SettingsPage from "./pages/settings";
 import { clearSession, getStoredUser, getToken, type StoredUser } from "./auth";
@@ -91,6 +95,12 @@ export default function App() {
           { path: "/documents", name: "文档", icon: <CloudUploadOutlined /> },
           { path: "/jobs", name: "任务", icon: <UnorderedListOutlined /> },
           { path: "/search-test", name: "检索测试", icon: <SearchOutlined /> },
+          {
+            path: "/quality",
+            name: "质量与评估",
+            icon: <SafetyCertificateOutlined />,
+          },
+          { path: "/monitoring", name: "监控", icon: <DashboardOutlined /> },
           { path: "/settings", name: "设置", icon: <SettingOutlined /> },
         ],
       }}
@@ -130,6 +140,22 @@ export default function App() {
           element={
             <RequireAuth>
               <SearchTestPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/quality"
+          element={
+            <RequireAuth>
+              <QualityPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/monitoring"
+          element={
+            <RequireAuth>
+              <MonitoringPage />
             </RequireAuth>
           }
         />

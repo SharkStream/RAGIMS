@@ -269,3 +269,86 @@ export const usersApi = {
     body: { role?: string; status?: string; password?: string },
   ) => http.patch<never, ManagedUser>(`/auth/users/${userId}`, body),
 };
+
+// ---- quality & evaluation (L2/L3) ----
+export interface QualityCheckOut {
+  version: number;
+  doc_version_id: string;
+  check_type: string;
+  score: number;
+  detail: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface EvaluationSummary {
+  id: string;
+  name: string;
+  parent_run_id: string | null;
+  queries: number | null;
+  metrics: Record<string, number> | null;
+  created_at: string | null;
+}
+
+export interface EvaluationReport {
+  id: string;
+  name: string;
+  parent_run_id: string | null;
+  dataset: Array<{ query: string; expected_doc_ids: string[] }>;
+  metrics: Record<string, number> | null;
+  result: Array<{
+    query: string;
+    expected_doc_ids: string[];
+    hit_doc_ids: string[];
+    recallat_k?: number;
+    "recall@k"?: number;
+    reciprocal_rank?: number;
+    "ndcg@k"?: number;
+    first_hit_rank?: number;
+    review?: { verdict: string; note?: string | null };
+  }> | null;
+  created_at: string | null;
+}
+
+export const qualityApi = {
+  byDocument: (docId: string) =>
+    http.get<never, QualityCheckOut[]>(`/documents/${docId}/quality`),
+  listEvaluations: (params: { page?: number; page_size?: number }) =>
+    http.get<never, PageResult<EvaluationSummary>>("/evaluations", { params }),
+  evaluation: (runId: string) =>
+    http.get<never, EvaluationReport>(`/evaluations/${runId}`),
+  runEvaluation: (body: {
+    name: string;
+    top_k: number;
+    dataset: Array<{ query: string; expected_doc_ids: string[] }>;
+  }) => http.post<never, EvaluationReport>("/evaluations", body),
+  reviewResult: (
+    runId: string,
+    index: number,
+    body: { verdict: "correct" | "false_positive" | "missed"; note?: string },
+  ) => http.patch<never, EvaluationReport>(`/evaluations/${runId}/results/${index}`, body),
+};
+
+// ---- observability (M1/M2/M3) ----
+export interface HealthDetail {
+  status: "ok" | "degraded";
+  checks: Record<string, { ok: boolean; detail: string; elapsed_ms?: number }>;
+  gauges: {
+    documents_total: number;
+    queue_depth: number;
+    jobs_failed_24h: number;
+    jobs_settled_24h: number;
+  };
+  alerts: Array<{ code: string; detail: string }>;
+}
+
+export interface CostSummary {
+  total_tokens: number;
+  embed_calls: number;
+  days: Array<{ day: string; tokens: number; embed_calls: number }>;
+}
+
+export const opsApi = {
+  healthDetail: () => http.get<never, HealthDetail>("/health/detail"),
+  costs: (params: { days?: number }) =>
+    http.get<never, CostSummary>("/stats/costs", { params }),
+};

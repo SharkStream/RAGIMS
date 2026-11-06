@@ -167,7 +167,11 @@ def test_step_outputs_are_recorded(monkeypatch) -> None:
         "v-1", session_factory=make_factory(session), embedder=fake_embedder()
     )
     embed_step = next(s for s in session.steps if s.step_name == "embed")
-    assert embed_step.output["result"] is not None  # serialized usage/vector summary
+    # M2 contract: the embed step now carries a structured, JSON-safe summary
+    # (token accounting) instead of the raw (vectors, usage) tuple repr.
+    assert embed_step.output["token_count"] >= 0
+    assert embed_step.output["chunk_count"] > 0
+    assert "vectors" not in embed_step.output  # matrices never hit job_steps
     upsert_step = next(s for s in session.steps if s.step_name == "upsert")
     assert upsert_step.output is not None  # every step carries output (acceptance 2)
 

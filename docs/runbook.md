@@ -112,6 +112,22 @@ curl http://127.0.0.1:8000/api/auth/me -H "Authorization: Bearer <token>"
 - 检索 403/查不到的常见原因：viewer 检索 confidential（按设计不可见）；检查 `documents.access_level` 与点 payload 一致（不一致说明历史数据未同步，reprocess 该文档可重建 payload）。
 - 审计：`GET /api/audit-logs?resource_id=<doc>` 定位「谁在何时做了什么」；写路径失败不阻断业务（仅 log）。
 
+## 4.6 数据清空（cleanup.py）
+
+测试残留过多 / 演示环境重置时使用；**不可逆**，先 `--dry-run` 看清单。
+
+```powershell
+.\env\Scripts\python.exe scripts\cleanup.py --dry-run   # 只打印将删除的行数
+.\env\Scripts\python.exe scripts\cleanup.py             # 交互确认（输入 YES）
+.\env\Scripts\python.exe scripts\cleanup.py --yes       # 跳过确认
+```
+
+清除范围：MySQL 业务表（quality_checks / chunks / job_steps / ingestion_jobs /
+document_versions / documents / evaluation_runs / audit_logs）+ **非 admin 用户**
+（保留 `username='admin'`）+ Qdrant collection 重建（向量清零）+ MinIO 两桶对象。
+**保留**：tenants / datasources / embedding_models（bootstrap 种子，admin 与默认模型依赖）。
+清空后无需重启服务；上传/评估等功能即回到初始空态。
+
 ## 5. 常用命令速查
 
 ```powershell
@@ -125,13 +141,20 @@ alembic upgrade head                       # 迁移
 .\env\Scripts\python.exe scripts\seed.py   # 种子（租户/用户/默认模型）
 .\env\Scripts\python.exe scripts\init_qdrant.py
 .\env\Scripts\python.exe scripts\reconcile.py
+.\env\Scripts\python.exe scripts\alert_check.py          # M3 告警检查（可挂 cron，exit 1=有告警）
+.\env\Scripts\python.exe scripts\cleanup.py --dry-run    # 清空业务数据预览
 
 # 质量门禁
-.\env\Scripts\python.exe -m pytest tests -q -p no:cacheprovider        # 247 单测
+.\env\Scripts\python.exe -m pytest tests -q -p no:cacheprovider        # 365 单测
 $env:RAGIMS_INTEGRATION='1'; pytest tests\test_i1_integration.py -q    # 真栈集成
 .\env\Scripts\ruff.exe check app tests scripts
 .\env\Scripts\black.exe --check app tests
 .\env\Scripts\mypy.exe app scripts/seed.py --cache-dir $env:TEMP\mypy_cache_ragims
+```
+
+# 指标抓取（M1）
+```
+GET /api/metrics     # Prometheus 文本格式（无鉴权，仅聚合统计）
 ```
 
 ## 6. 紧急预案
@@ -140,3 +163,23 @@ $env:RAGIMS_INTEGRATION='1'; pytest tests\test_i1_integration.py -q    # 真栈�
 - **MySQL 宕机**：全接口 500；恢复后重试上传（幂等保证不重复）。
 - **Embedding 网关宕机**：embed 步失败 + 自动重试耗尽后 job failed；网关恢复后批量 retry failed jobs。
 - **Qdrant 数据丢失**：见 §2 重建 + 回填（reprocess 全量 succeeded 文档）。
+
+## 7. 备份与恢复（M5）
+
+```powershell
+# 备份（零依赖模式；产物 backups/<时间戳>/{mysql.sql, minio/, MANIFEST.json}）
+.\env\Scripts\python.exe scripts\backup.py
+.\env\Scripts\python.exe scripts\backup.py --out D:\backups --mode mysqldump   # 本机有 mysqldump 时
+# 定时：Windows 计划任务 / cron 每 24h 跑一次并异地拷贝
+
+# 恢复（手工执行，破坏性——先确认目标库可清）
+# 1) 空库建表：
+alembic upgrade head
+# 2) 导入数据（dump 自带 FOREIGN_KEY_CHECKS=0 包裹 + 全表 DELETE/INSERT）：
+mysql -h<host> -u<user> -p ragims < backups\<ts>\mysql.sql
+# 3) 对象回传（保持对象键不变）：
+mc cp --recursive backups\<ts>\minio\raw-docs\ <mc-alias>/raw-docs/
+mc cp --recursive backups\<ts>\minio\parsed-text\ <mc-alias>/parsed-text/
+# 4) 向量库：无需恢复——重跑 reprocess（按文档）或 reconcile 对账后批量 reprocess
+# 5) 校验：/health/detail status=ok；GET /documents 数量与 MANIFEST 对账
+```

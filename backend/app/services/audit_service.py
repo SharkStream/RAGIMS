@@ -19,13 +19,16 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: Known actions (documents.write-path set for MVP3; auth lands in K2).
+#: Known actions (documents.write-path set for MVP3; auth lands in K2,
+#: eval.run in L3 — the enum grows as stages add write paths).
 ACTIONS_DOC_UPLOAD = "doc.upload"
 ACTIONS_DOC_META_PATCH = "doc.meta_patch"
 ACTIONS_DOC_ACTIVATE = "doc.activate"
 ACTIONS_DOC_VERSION_DELETE = "doc.version_delete"
 ACTIONS_DOC_SOFT_DELETE = "doc.soft_delete"
 ACTIONS_DOC_REPROCESS = "doc.reprocess"
+ACTIONS_EVAL_RUN = "eval.run"
+ACTIONS_EVAL_REVIEW = "eval.review"
 
 
 def record_audit(

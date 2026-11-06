@@ -328,6 +328,8 @@
 | M3 前端可用 | 第 4-5 周 | 四类页面可操作全流程 |
 | M4 MVP 验收 | 第 6 周 | 验收清单全绿，文档齐备 |
 | M5 版本与增量 | 阶段 2 | 同名递增版本、回滚秒切、元数据零重嵌入（见 docs/mvp2/） |
+| M6 权限与多租户 | 阶段 3 | 登录 + 三档角色 + 密级 ACL + 审计（见 docs/mvp3/） |
+| M7 质量与评估 | 阶段 4 | 流水线质量三查 + 评估指标 + 质量看板（见 docs/mvp4/） |
 
 ---
 
@@ -363,3 +365,29 @@
 ### K7. 注册与用户管理 API（阶段 3 增量，plan.md 已排期，待实施）
 - [x] POST/GET/PATCH /auth/users（admin-only）+ 审计 + 防自锁 + 前端用户管理 Tab
 - [x] CLI 建号脚本 scripts/create_user.py（含 auth.user_created 审计）
+
+## 阶段 L · 质量与评估（plan.md 阶段 4，任务文档见 docs/mvp4/）
+
+### L1. 质量数据层
+- [x] evaluation_runs + quality_checks 两表（迁移 0005）+ ORM 模型
+### L2. 流水线质量检查
+- [x] 空块率/重复率/长度分布三检查器 + worker finalize 接入 + GET /documents/{id}/quality
+### L3. 评估引擎
+- [x] 数据集 → 批量检索 → recall@k / MRR / nDCG@k → 报告落库 + /evaluations API
+### L4. 质量看板前端
+- [x] 新「质量」页：文档质量结果 + 发起评估 + 报告视图 + 人工审核
+### L5. 测试与验收
+- [x] 单测 + 真栈集成 + live 探针 + 文档收官
+
+## 阶段 M · 可观测与运维（plan.md 阶段 5，任务文档见 docs/mvp5/）
+
+### M1. 指标采集
+- [x] /api/metrics（Prometheus 文本格式）+ HTTP 计数/耗时 + 任务/文档派生指标
+### M2. 成本统计
+- [x] embedding token 消耗聚合 API（按天/按模型）
+### M3. 告警
+- [x] /health/detail 依赖探活 + scripts/alert_check.py（失败率/积压阈值）
+### M4. 监控大盘前端
+- [x] 新「监控」页：健康卡 + 任务统计 + 成本曲线
+### M5. 备份恢复与验收
+- [x] scripts/backup.py（mysqldump + MinIO）+ 恢复步骤 + 文档收官

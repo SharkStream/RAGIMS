@@ -41,7 +41,10 @@ def main() -> int:
             )
             remaining = find_missing_point_ids(session)
             if remaining:
-                print(f"reconcile: WARNING {len(remaining)} row(s) still missing", file=sys.stderr)
+                print(
+                    f"reconcile: WARNING {len(remaining)} row(s) still missing",
+                    file=sys.stderr,
+                )
                 exit_code = 1
 
         drift = find_is_latest_drift(session)

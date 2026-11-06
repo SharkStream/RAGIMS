@@ -2,7 +2,7 @@
 
 RAG Ingestion Management System — 文档摄取与向量化管理系统。上传 pdf/docx/txt → 解析/清洗/切分 → 向量化 → 入库 Qdrant，配套任务看板、检索测试、版本管理、多租户权限（登录/角色/密级/审计）与设置页面。
 
-**当前进度：plan.md 前三个阶段全部完成 ✅**（MVP1 摄取主链路 → MVP2 版本与增量 → MVP3 权限与多租户）；下一阶段：阶段 4 · 质量与评估。
+**当前进度：plan.md 前五个阶段全部完成 ✅**（MVP1 摄取主链路 → MVP2 版本与增量 → MVP3 权限与多租户 → 阶段 4 质量与评估 → 阶段 5 可观测与运维）；剩余：阶段 6 · 优化与扩展（持续迭代）。
 
 ## 架构（MVP 已实现）
 
@@ -34,6 +34,8 @@ MySQL 8 元数据 · MinIO 原始/解析文本 · Qdrant 向量
 | MVP1 | A–I | 摄取主链路 | 9 张表 + 异步 7 步流水线 + 上传幂等 + API 全家桶 + React 四页 + 门禁体系 | [docs/mvp1](./docs/mvp1/README.md) |
 | MVP2 | J1–J6 | 版本与增量 | 增量上传（内容变→新版本，同→幂等）/ 版本 API / 元数据零重嵌入 PATCH / 历史回滚（MySQL 指针 + Qdrant payload 原子翻转）/ 版本级回收 / 前端 3-Tab 抽屉 | [docs/mvp2](./docs/mvp2/README.md) |
 | MVP3 | K1–K6 | 权限与多租户 | 审计日志（7 类写路径 + 查询 API）/ 真实登录（HMAC token + pbkdf2）/ 三档角色 403 / 检索密级白名单 + PATCH 即时同步 / 前端登录与角色感知 UI | [docs/mvp3](./docs/mvp3/README.md) |
+| 阶段 4 | L1–L5 | 质量与评估 | 流水线质量检查（空块率/重复率/长度离散，finalize 自动）+ 评估引擎（recall@k/MRR/nDCG@k/hit_rate，文档级排名）+ 质量看板第五页 + 结果人工审核 | [docs/mvp4](./docs/mvp4/README.md) |
+| 阶段 5 | M1–M5 | 可观测与运维 | `/api/metrics` Prometheus 指标（零依赖）+ token 成本统计 + `/health/detail` 与告警脚本 + 监控大盘第六页 + 备份恢复脚本 | [docs/mvp5](./docs/mvp5/README.md) |
 
 ### 安全模型（MVP3 落地）
 
@@ -48,7 +50,7 @@ POST /api/auth/login（pbkdf2，错密码/未知/禁用统一 401 防枚举）
 ```
 
 - 渐进开关：`SECURITY__AUTH_REQUIRED=false`（dev 默认）时无 token 回退 stub admin，**带 token 恒严格校验**；生产置 `true` 全强制。
-- 数据：MySQL 现为 **10 张表**（迁移 0001–0004，`audit_logs` 为 0003、`users.password_hash` 为 0004）。
+- 数据：MySQL 现为 **12 张表**（迁移 0001–0006；0003 `audit_logs`、0004 `users.password_hash`、0005 `quality_checks`+`evaluation_runs`、0006 `evaluation_runs.parent_run_id`）。
 
 ## 快速开始：克隆后把系统跑起来（约 10 分钟）
 
@@ -99,7 +101,7 @@ notepad .env             # 至少改下面这一项：
 python -m venv env
 .\env\Scripts\Activate.ps1          # 激活虚拟环境（每次开新终端都要先激活）
 pip install -r requirements.txt
-alembic upgrade head                # 建 10 张表（迁移 0001–0004）
+alembic upgrade head                # 建 12 张表（迁移 0001–0006）
 python scripts\seed.py              # 种子数据：默认租户/admin（密码缺省 admin123，可用 RAGIMS_ADMIN_PASSWORD 覆盖）/数据源/Embedding 模型
 python scripts\init_qdrant.py       # 创建 Qdrant collection（维度取自 .env）
 ```
@@ -175,6 +177,6 @@ pnpm dev                # http://localhost:5173
 
 ## 质量与 CI
 
-- 后端门禁：`pytest`（**318 单测** + marker-gated 真栈集成 `test_i1/test_j/test_k_integration.py`，`RAGIMS_INTEGRATION=1` 运行）、`ruff`、`black`、`mypy`；前端 `tsc --noEmit`。
+- 后端门禁：`pytest`（**354 单测** + marker-gated 真栈集成 `test_i1/test_j/test_k_integration.py`，`RAGIMS_INTEGRATION=1` 运行）、`ruff`、`black`、`mypy`；前端 `tsc --noEmit`。
 - CI：`.github/workflows/ci.yml`（lint + test + 覆盖率 ≥70%，前端 typecheck + build）。
 - 验收探针（阶段收官时跑通，验收后可删）：`backend/scripts/_j*_tmp.py`、`_k6e2e_tmp.py`。

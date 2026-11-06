@@ -21,6 +21,7 @@ MinIO failure, so a rejected upload leaves zero rows and zero objects.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 from qdrant_client import models as qmodels
@@ -46,6 +47,7 @@ from app.models.document import Document
 from app.models.document_version import DocumentVersion
 from app.models.ingestion_job import IngestionJob
 from app.models.job_step import JobStep
+from app.models.quality_check import QualityCheck
 from app.schemas.document import DocumentPatchRequest
 from app.services.parsing_service import parsed_object_key
 from app.services.storage import StorageService, get_storage
@@ -871,6 +873,34 @@ def activate_document_version(
         f"(rollback from v{previous.version if previous else 'n/a'})"
     )
     return doc
+
+
+def list_document_quality(
+    session: Session, tenant_id: str, doc_id: str
+) -> list[dict[str, Any]]:
+    """Quality-check rows for a document, latest version first (L2 read side).
+
+    Each item carries the version ordinal so the dashboard can show per-version
+    trends; versions without checks are simply absent from the output.
+    """
+    doc = get_document_or_404(session, tenant_id, doc_id)
+    rows = session.execute(
+        select(QualityCheck, DocumentVersion.version)
+        .join(DocumentVersion, QualityCheck.doc_version_id == DocumentVersion.id)
+        .where(DocumentVersion.doc_id == doc.id)
+        .order_by(DocumentVersion.version.desc(), QualityCheck.check_type)
+    ).all()
+    return [
+        {
+            "version": version,
+            "doc_version_id": check.doc_version_id,
+            "check_type": check.check_type,
+            "score": float(check.score),
+            "detail": check.detail,
+            "created_at": check.created_at,
+        }
+        for check, version in rows
+    ]
 
 
 def delete_document_version(

@@ -118,6 +118,22 @@ class DocumentPatchRequest(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# L2 · document quality checks
+# --------------------------------------------------------------------------- #
+
+
+class QualityCheckOut(BaseModel):
+    """One quality-check row for the dashboard (score: risk, lower is better)."""
+
+    version: int
+    doc_version_id: str
+    check_type: str
+    score: float
+    detail: dict[str, object] | None = None
+    created_at: datetime | None = None
+
+
+# --------------------------------------------------------------------------- #
 # F3 · reprocess + cancel
 # --------------------------------------------------------------------------- #
 

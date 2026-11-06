@@ -68,6 +68,26 @@
 | :-- | :-- | :-- |
 | GET | `/api/audit-logs` | 分页（page/page_size≤100）+ `action` / `resource_type` / `resource_id` 过滤；租户只取自身份；倒序。动作：`doc.upload / doc.meta_patch / doc.activate / doc.version_delete / doc.soft_delete / doc.reprocess / auth.login` |
 
+## 质量与评估（L2/L3/L4）
+
+| 方法 | 路径 | 说明 |
+| :-- | :-- | :-- |
+| GET | `/api/documents/{doc_id}/quality` | 版本级质量检查结果（`empty_ratio`/`duplicate_ratio`/`length_spread`，score 为风险占比 **越低越好**，detail 存原始计数）；流水线 finalize 后自动生成，登录即可读 |
+| POST | `/api/evaluations` | `{name, top_k, dataset:[{query, expected_doc_ids}]}`（1-100 条）→ 同步跑真实检索 → 201 + `{metrics, result}`；审计 `eval.run` |
+| GET | `/api/evaluations` | 评估历史（本租户倒序，摘要 + 指标） |
+| GET | `/api/evaluations/{id}` | 完整报告（数据集 + 指标 + 逐条查询命中明细）；跨租户 404 |
+| PATCH | `/api/evaluations/{id}/results/{i}` | 人工审核：`{verdict: correct/false_positive/missed, note?}` 回写 `result[i].review`；审计 `eval.review` |
+
+指标口径：`recall@k`（期望文档召回比例）/ `mrr`（首个命中倒易秩均值）/ `ndcg@k`（二值相关折损累计增益）/ `hit_rate`（至少命中一条的比例）；**按文档去重排名**（同文档多 chunk 只占一席）。
+
+## 监控与运维（M1/M2/M3）
+
+| 方法 | 路径 | 说明 |
+| :-- | :-- | :-- |
+| GET | `/api/metrics` | **Prometheus 文本格式**（无鉴权——仅聚合统计，无业务载荷）：HTTP 请求计数/耗时（低基数路由模板）+ 文档/任务/队列深度/tokens/步骤耗时派生 gauge |
+| GET | `/api/stats/costs?days=30` | embedding token 成本：`{total_tokens, embed_calls, days:[{day, tokens, embed_calls}]}`（embed 步骤结构化记账） |
+| GET | `/health/detail`（亦在 `/api` 前缀下） | 运维状态：依赖探活 + gauges（队列积压/24h 失败）+ `alerts` 阈值判定；HTTP 恒 200，判断看 `status`（ok/degraded） |
+
 ## 统计（G3）
 
 | 方法 | 路径 | 说明 |
