@@ -14,6 +14,8 @@ Business routers mount here under ``settings.app.api_prefix`` as later tasks
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.audit import router as audit_router
+from app.api.auth import router as auth_router
 from app.api.datasources import router as datasources_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
@@ -49,6 +51,8 @@ app.add_middleware(
 # business API prefix changes.
 app.include_router(health_router)
 app.include_router(documents_router, prefix=settings.app.api_prefix)
+app.include_router(auth_router, prefix=settings.app.api_prefix)
+app.include_router(audit_router, prefix=settings.app.api_prefix)
 app.include_router(datasources_router, prefix=settings.app.api_prefix)
 app.include_router(jobs_router, prefix=settings.app.api_prefix)
 app.include_router(search_router, prefix=settings.app.api_prefix)

@@ -60,18 +60,24 @@ MVP_TABLES = {
     "job_steps",
 }
 
+#: Stage-3 additions (K1 audit). plan.md 4.7 defers these to stage 3; they
+#: join the metadata inventory as each stage lands its migration.
+STAGE3_TABLES = {
+    "audit_logs",
+}
+
 DEFERRED_TABLES = [
     "chunking_strategies",
     "parsers",
     "permissions",
-    "audit_logs",
     "evaluation_runs",
     "quality_checks",
 ]
 
 
 def test_metadata_has_exactly_the_9_mvp_tables() -> None:
-    assert set(Base.metadata.tables) == MVP_TABLES
+    """B1's 9 tables + stage-3 additions; every new stage extends this set."""
+    assert set(Base.metadata.tables) == MVP_TABLES | STAGE3_TABLES
 
 
 def test_deferred_tables_are_absent() -> None:

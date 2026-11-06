@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class User(UUIDPkMixin, TimestampMixin, Base):
-    """用户（MVP 无真实认证，路由使用预置默认管理员，阶段 3 替换）。"""
+    """用户（K2 起带 pbkdf2 password_hash；角色/状态见字段）。"""
 
     __tablename__ = "users"
     __table_args__ = (
@@ -38,5 +38,7 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="active"
     )
+    #: K2 — pbkdf2 storage format (app/core/security.py); NULL until first set.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
 
     tenant: Mapped[Tenant] = relationship(back_populates="users")

@@ -37,6 +37,7 @@ def search_test_endpoint(
         tenant_id=user.tenant_id,
         top_k=body.top_k,
         filters=body.filters,
+        role=user.role,
     )
     hits = [
         SearchHit(

@@ -1,10 +1,11 @@
 """SQLAlchemy models.
 
 Importing this package registers every MVP table on ``Base.metadata`` so
-Alembic autogenerate can discover all 9 tables (B2 step 3). Deferred tables
-(see ``docs/db-schema.md`` §7) deliberately have no model here.
+Alembic autogenerate can discover all tables (B2 step 3). Stage-3 tables
+(audit_logs, K1) register here too.
 """
 
+from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.chunk import Chunk
 from app.models.datasource import Datasource
@@ -17,6 +18,7 @@ from app.models.tenant import Tenant
 from app.models.user import User
 
 __all__ = [
+    "AuditLog",
     "Base",
     "Chunk",
     "Datasource",

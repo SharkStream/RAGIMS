@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser, get_current_user, get_db
+from app.core.permissions import require_writer
 from app.schemas.common import ApiResponse, PageResult, ok
 from app.schemas.document import (
     ChunkOut,
@@ -30,6 +31,15 @@ from app.schemas.document import (
     DocumentVersionDeleteResponse,
     DocumentVersionOut,
     JobCancelResponse,
+)
+from app.services.audit_service import (
+    ACTIONS_DOC_ACTIVATE,
+    ACTIONS_DOC_META_PATCH,
+    ACTIONS_DOC_REPROCESS,
+    ACTIONS_DOC_SOFT_DELETE,
+    ACTIONS_DOC_UPLOAD,
+    ACTIONS_DOC_VERSION_DELETE,
+    record_audit,
 )
 from app.services.document_service import (
     activate_document_version,
@@ -69,7 +79,7 @@ _READ_CAP_MB = 200
 def upload(
     file: Annotated[UploadFile, File(description="pdf / docx / txt / md file")],
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
     datasource_id: Annotated[
         str | None, Form(description="optional datasource; defaults to tenant default")
     ] = None,
@@ -97,6 +107,19 @@ def upload(
         user_id=user.id,
         datasource_id=datasource_id,
         title=title,
+    )
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_UPLOAD,
+        resource_type="document",
+        resource_id=outcome.doc_id,
+        detail={
+            "file_name": filename,
+            "version": outcome.version,
+            "duplicate": outcome.duplicate,
+        },
     )
     return ok(
         DocumentUploadResponse(
@@ -315,7 +338,7 @@ def patch_doc(
     doc_id: str,
     body: DocumentPatchRequest,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[DocumentDetail]:
     """Metadata-only PATCH (J3): one row, no job, no chunk/vector change.
 
@@ -323,6 +346,15 @@ def patch_doc(
     validation and unknown fields.
     """
     doc = update_document_meta(db, user.tenant_id, doc_id, body)
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_META_PATCH,
+        resource_type="document",
+        resource_id=doc.id,
+        detail={"fields": body.model_dump(exclude_none=True)},
+    )
     version = get_latest_version(db, doc.id)
     return ok(
         DocumentDetail(
@@ -341,7 +373,7 @@ def activate_version(
     doc_id: str,
     version: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[DocumentDetail]:
     """MySQL pointer flip + Qdrant payload flip (J4), idempotent.
 
@@ -349,6 +381,15 @@ def activate_version(
     MySQL rolled back when Qdrant is unreachable.
     """
     doc = activate_document_version(db, user.tenant_id, doc_id, version)
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_ACTIVATE,
+        resource_type="document",
+        resource_id=doc.id,
+        detail={"activated_version": version, "current_version": doc.current_version},
+    )
     row = get_latest_version(db, doc.id)
     return ok(
         DocumentDetail(
@@ -367,10 +408,19 @@ def delete_version(
     doc_id: str,
     version: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[DocumentVersionDeleteResponse]:
     """Physical reclaim of a non-latest version (J4); latest → 409."""
     row = delete_document_version(db, user.tenant_id, doc_id, version)
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_VERSION_DELETE,
+        resource_type="document_version",
+        resource_id=row.id,
+        detail={"version": version},
+    )
     return ok(DocumentVersionDeleteResponse(doc_id=doc_id, version=row.version))
 
 
@@ -382,10 +432,19 @@ def delete_version(
 def delete_doc(
     doc_id: str,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[DocumentDeleteResponse]:
     """Marks the document deleted; list/detail treat it as nonexistent."""
     doc = soft_delete_document(db, user.tenant_id, doc_id)
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_SOFT_DELETE,
+        resource_type="document",
+        resource_id=doc.id,
+        detail={"status": str(doc.status)},
+    )
     return ok(DocumentDeleteResponse(doc_id=doc.id, status=doc.status))
 
 
@@ -403,10 +462,19 @@ def delete_doc(
 def reprocess(
     doc_id: str,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[DocumentUploadResponse]:
     """New ``job_type=reprocess`` row + pipeline dispatch (idempotent chain)."""
     outcome = reprocess_document(db, user.tenant_id, doc_id, user_id=user.id)
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        action=ACTIONS_DOC_REPROCESS,
+        resource_type="document",
+        resource_id=outcome.doc_id,
+        detail={"job_id": outcome.job_id, "version": outcome.version},
+    )
     return ok(
         DocumentUploadResponse(
             doc_id=outcome.doc_id,
@@ -429,7 +497,7 @@ def cancel_job_endpoint(
     doc_id: str,
     job_id: str,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[JobCancelResponse]:
     """Marks the job ``cancelled``; the worker checks the flag before each step."""
     job = cancel_job(db, user.tenant_id, job_id)

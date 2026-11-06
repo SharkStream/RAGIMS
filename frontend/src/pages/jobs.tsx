@@ -22,6 +22,7 @@ import {
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { jobsApi, errorMessage, type JobOut, type JobStepOut } from "../api";
+import { canWrite, getStoredUser } from "../auth";
 
 const POLL_MS = 5000;
 
@@ -51,6 +52,9 @@ function duration(started: string | null, finished: string | null): string {
 }
 
 export default function JobsPage() {
+  // K5: viewer (read-only role) sees no retry/cancel controls.
+  const writable = canWrite(getStoredUser());
+
   // ---- list ----
   const [rows, setRows] = useState<JobOut[]>([]);
   const [total, setTotal] = useState(0);
@@ -177,12 +181,12 @@ export default function JobsPage() {
       render: (_, job) => (
         <Space>
           <Button size="small" onClick={() => void openDetail(job)}>详情</Button>
-          {job.status === "failed" && (
+          {writable && job.status === "failed" && (
             <Popconfirm title="确认重投该失败任务？" onConfirm={() => void doRetry(job)}>
               <Button size="small">重试</Button>
             </Popconfirm>
           )}
-          {(job.status === "pending" || job.status === "running") && (
+          {writable && (job.status === "pending" || job.status === "running") && (
             <Popconfirm title="确认取消该任务？" onConfirm={() => void doCancel(job)}>
               <Button size="small" danger>取消</Button>
             </Popconfirm>
@@ -280,12 +284,12 @@ export default function JobsPage() {
         extra={
           detail && (
             <Space>
-              {detail.status === "failed" && (
+              {writable && detail.status === "failed" && (
                 <Popconfirm title="确认重投该失败任务？" onConfirm={() => void doRetry(detail)}>
                   <Button size="small">重试</Button>
                 </Popconfirm>
               )}
-              {(detail.status === "pending" || detail.status === "running") && (
+              {writable && (detail.status === "pending" || detail.status === "running") && (
                 <Popconfirm title="确认取消该任务？" onConfirm={() => void doCancel(detail)}>
                   <Button size="small" danger>取消</Button>
                 </Popconfirm>

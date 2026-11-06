@@ -43,7 +43,30 @@
 
 | 方法 | 路径 | 说明 |
 | :-- | :-- | :-- |
-| POST | `/api/search/test` | Retrieval test: embed query + Qdrant search (tenant-scoped) |
+| POST | `/api/search/test` | Retrieval test: embed query + Qdrant search（tenant 硬过滤 + K4 角色密级白名单 `access_level ∈ MatchAny(白名单)`，viewer 不可见 confidential） |
+
+## 认证（K2）
+
+| 方法 | 路径 | 说明 |
+| :-- | :-- | :-- |
+| POST | `/api/auth/login` | `{username, password}` → `{token, token_type, expires_in, user}`；错密码/未知/禁用统一 401（防枚举）；登录进审计 `auth.login` |
+| GET | `/api/auth/me` | 回显当前身份（验签 + 查 users 行；role/tenant/status 以 DB 为准） |
+
+携带方式：`Authorization: Bearer <token>`（12h 过期）。后端 `SECURITY__AUTH_REQUIRED=true` 时无 token 一律 401；false（dev 默认）时匿名回退 stub admin，带 token 仍严格校验。
+
+## 用户管理（K7 · admin-only）
+
+| 方法 | 路径 | 说明 |
+| :-- | :-- | :-- |
+| POST | `/api/auth/users` | 本租户建号 `{username, password, role, email?}` → 201；重名 409；密码 ≥8 位且含字母数字否则 422；审计 `auth.user_created` |
+| GET | `/api/auth/users` | 本租户用户分页（page/page_size≤100、status 过滤）；**不回传 password_hash** |
+| PATCH | `/api/auth/users/{id}` | `{role?/status?/password?}` 任意组合：角色变更审计 `auth.role_changed`（detail from→to）、禁用/启用 `auth.user_disabled`/`auth.user_enabled`、重置密码 `auth.password_reset`（不落明文）；**role/status 立即生效**（现有 token 每次请求查库）；跨租户目标 404；修改自己 409（防自锁） |
+
+## 审计日志（K1）
+
+| 方法 | 路径 | 说明 |
+| :-- | :-- | :-- |
+| GET | `/api/audit-logs` | 分页（page/page_size≤100）+ `action` / `resource_type` / `resource_id` 过滤；租户只取自身份；倒序。动作：`doc.upload / doc.meta_patch / doc.activate / doc.version_delete / doc.soft_delete / doc.reprocess / auth.login` |
 
 ## 统计（G3）
 

@@ -41,6 +41,7 @@ import {
   type DocumentPatch,
   type DocumentVersionOut,
 } from "../api";
+import { canWrite, getStoredUser } from "../auth";
 
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
 const MAX_MB = 50;
@@ -70,6 +71,9 @@ interface UploadState {
 }
 
 export default function DocumentsPage() {
+  // K5: viewer (read-only role) sees no mutation controls.
+  const writable = canWrite(getStoredUser());
+
   // ---- list state ----
   const [rows, setRows] = useState<DocumentOut[]>([]);
   const [total, setTotal] = useState(0);
@@ -315,15 +319,19 @@ export default function DocumentsPage() {
       render: (_, doc) => (
         <Space>
           <Button size="small" onClick={() => void openDetail(doc.id)}>详情</Button>
-          <Button size="small" icon={<ReloadOutlined />} onClick={() => void doReprocess(doc)}>
-            重新处理
-          </Button>
-          <Popconfirm
-            title="确认软删除该文档？"
-            onConfirm={() => void doDelete(doc)}
-          >
-            <Button size="small" danger>删除</Button>
-          </Popconfirm>
+          {writable && (
+            <Button size="small" icon={<ReloadOutlined />} onClick={() => void doReprocess(doc)}>
+              重新处理
+            </Button>
+          )}
+          {writable && (
+            <Popconfirm
+              title="确认软删除该文档？"
+              onConfirm={() => void doDelete(doc)}
+            >
+              <Button size="small" danger>删除</Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -388,33 +396,32 @@ export default function DocumentsPage() {
       width: 190,
       render: (_, row) => (
         <Space>
-          <Popconfirm
-            title={`将文档切换到 v${row.version}（回滚）？`}
-            disabled={row.is_latest}
-          >
-            <Button
-              size="small"
-              type="link"
-              disabled={row.is_latest || row.parse_status !== "parsed"}
-              onClick={() => detail && void doActivate(detail.id, row.version)}
-            >
-              设为当前
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title={`删除 v${row.version}（chunks/向量/对象将被回收）？`}
-            disabled={row.is_latest}
-          >
-            <Button
-              size="small"
-              type="link"
-              danger
+          {writable && (
+            <Popconfirm
+              title={`将文档切换到 v${row.version}（回滚）？`}
               disabled={row.is_latest}
-              onClick={() => detail && void doDeleteVersion(detail.id, row.version)}
+              onConfirm={() => detail && void doActivate(detail.id, row.version)}
             >
-              删除版本
-            </Button>
-          </Popconfirm>
+              <Button
+                size="small"
+                type="link"
+                disabled={row.is_latest || row.parse_status !== "parsed"}
+              >
+                设为当前
+              </Button>
+            </Popconfirm>
+          )}
+          {writable && (
+            <Popconfirm
+              title={`删除 v${row.version}（chunks/向量/对象将被回收）？`}
+              disabled={row.is_latest}
+              onConfirm={() => detail && void doDeleteVersion(detail.id, row.version)}
+            >
+              <Button size="small" type="link" danger disabled={row.is_latest}>
+                删除版本
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -467,19 +474,21 @@ export default function DocumentsPage() {
         </Space>
       }
     >
-      <Upload.Dragger
-        accept={ACCEPT.join(",")}
-        multiple={false}
-        showUploadList={false}
-        customRequest={({ file }) => void doUpload(file as File)}
-        style={{ marginBottom: 16 }}
-      >
-        <p className="ant-upload-drag-icon">
-          <CloudUploadOutlined />
-        </p>
-        <p className="ant-upload-text">点击或拖拽文件到此处上传（pdf / docx / txt，≤ {MAX_MB} MB）</p>
-        <p className="ant-upload-hint">相同内容重复上传会命中幂等，不会产生新版本</p>
-      </Upload.Dragger>
+      {writable && (
+        <Upload.Dragger
+          accept={ACCEPT.join(",")}
+          multiple={false}
+          showUploadList={false}
+          customRequest={({ file }) => void doUpload(file as File)}
+          style={{ marginBottom: 16 }}
+        >
+          <p className="ant-upload-drag-icon">
+            <CloudUploadOutlined />
+          </p>
+          <p className="ant-upload-text">点击或拖拽文件到此处上传（pdf / docx / txt，≤ {MAX_MB} MB）</p>
+          <p className="ant-upload-hint">相同内容重复上传会命中幂等，不会产生新版本</p>
+        </Upload.Dragger>
+      )}
 
       {upload && (
         <div style={{ marginBottom: 16 }}>
@@ -512,15 +521,17 @@ export default function DocumentsPage() {
                 label: "概要",
                 children: (
                   <>
-                    <Space style={{ marginBottom: 12 }}>
-                      <Button
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={openEdit}
-                      >
-                        编辑元数据
-                      </Button>
-                    </Space>
+                    {writable && (
+                      <Space style={{ marginBottom: 12 }}>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={openEdit}
+                        >
+                          编辑元数据
+                        </Button>
+                      </Space>
+                    )}
                     <Descriptions column={2} size="small" bordered>
                       <Descriptions.Item label="文档 ID" span={2}>
                         <Typography.Text copyable>{detail.id}</Typography.Text>

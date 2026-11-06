@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser, get_current_user, get_db
+from app.core.permissions import require_writer
 from app.schemas.common import ApiResponse, PageResult, ok
 from app.schemas.document import JobCancelResponse
 from app.schemas.job import JobOut, JobRetryResponse, JobStepOut
@@ -142,7 +143,7 @@ def get_steps(
 def retry(
     job_id: str,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[JobRetryResponse]:
     new_job = retry_job(db, user.tenant_id, job_id, user_id=user.id)
     return ok(
@@ -162,7 +163,7 @@ def retry(
 def cancel(
     job_id: str,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[CurrentUser, Depends(get_current_user)],
+    user: Annotated[CurrentUser, Depends(require_writer)],
 ) -> ApiResponse[JobCancelResponse]:
     job = cancel_job(db, user.tenant_id, job_id)
     return ok(JobCancelResponse(job_id=str(job.id), status=str(job.status)))

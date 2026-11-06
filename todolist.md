@@ -332,7 +332,6 @@
 ---
 
 ## 阶段 J · 版本与增量（plan.md 阶段 2，任务文档见 docs/mvp2/）
-
 ### J1. 增量上传（版本递增）
 - [x] 同名不同 hash → vN+1 新版本；并发同 hash 竞态收口（行锁 + 生成列唯一 + 死锁重试）
 ### J2. 版本查询 API
@@ -345,3 +344,22 @@
 - [x] 版本历史 Tab、设为当前/删除版本、元数据编辑表单
 ### J6. 测试与验收
 - [x] 单测 + 真栈集成 + live 探针 + 文档收官
+
+## 阶段 K · 权限与多租户（plan.md 阶段 3，任务文档见 docs/mvp3/）
+
+### K1. 审计日志
+- [x] audit_logs 表 + 写路径埋点 + GET /audit-logs
+### K2. 认证落地
+- [x] /auth/login + Bearer token + get_current_user 真实现
+### K3. 角色权限
+- [x] admin/editor/viewer 三档 + 写路径 403
+### K4. 检索 ACL 与密级同步
+- [x] 密级白名单过滤 + PATCH access_level 同步 Qdrant 点
+### K5. 前端登录与权限
+- [x] 登录页 + token 注入 + 401/403 + 角色感知 UI
+### K6. 测试与验收
+- [x] 单测 + 真栈集成 + live 探针 + 文档收官
+
+### K7. 注册与用户管理 API（阶段 3 增量，plan.md 已排期，待实施）
+- [x] POST/GET/PATCH /auth/users（admin-only）+ 审计 + 防自锁 + 前端用户管理 Tab
+- [x] CLI 建号脚本 scripts/create_user.py（含 auth.user_created 审计）

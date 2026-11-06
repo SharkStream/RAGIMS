@@ -222,3 +222,50 @@ export interface EffectiveSettings {
 export const settingsApi = {
   effective: () => http.get<never, EffectiveSettings>("/settings/effective"),
 };
+
+// ---- auth (K5) ----
+export interface LoginResponse {
+  token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    id: string;
+    tenant_id: string;
+    username: string;
+    display_name?: string | null;
+    role: string;
+  };
+}
+
+export const authApi = {
+  login: (username: string, password: string) =>
+    http.post<never, LoginResponse>("/auth/login", { username, password }),
+  me: () => http.get<never, LoginResponse["user"]>("/auth/me"),
+};
+
+// ---- user management (K7, admin-only) ----
+export interface ManagedUser {
+  id: string;
+  tenant_id: string;
+  username: string;
+  email: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const usersApi = {
+  list: (params: { page?: number; page_size?: number; status?: string }) =>
+    http.get<never, PageResult<ManagedUser>>("/auth/users", { params }),
+  create: (body: {
+    username: string;
+    password: string;
+    role: string;
+    email?: string;
+  }) => http.post<never, ManagedUser>("/auth/users", body),
+  patch: (
+    userId: string,
+    body: { role?: string; status?: string; password?: string },
+  ) => http.patch<never, ManagedUser>(`/auth/users/${userId}`, body),
+};

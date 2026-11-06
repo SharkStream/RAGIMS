@@ -96,11 +96,15 @@ def test_mandatory_conditions_always_present() -> None:
     result, _, vec = make_result()
     must = vec.calls[0][1].must
     keys = {c.key for c in must}
-    assert keys == {"tenant_id", "is_latest", "is_deleted"}
-    values = {c.key: c.match.value for c in must}
-    assert values["tenant_id"] == "t-1"
-    assert values["is_latest"] is True
-    assert values["is_deleted"] is False
+    # K4 adds a 4th mandatory condition: the role access-level whitelist.
+    assert {"tenant_id", "is_latest", "is_deleted"} <= keys
+    assert "access_level" in keys
+    values = {c.key: c.match for c in must}
+    assert values["tenant_id"].value == "t-1"
+    assert values["is_latest"].value is True
+    assert values["is_deleted"].value is False
+    level = values["access_level"]
+    assert sorted(level.any) == ["confidential", "internal", "public"]  # admin
 
 
 def test_request_filters_cannot_relax_security_keys() -> None:
@@ -112,13 +116,13 @@ def test_request_filters_cannot_relax_security_keys() -> None:
     }
     result, _, vec = make_result(filters=malicious)
     must = vec.calls[0][1].must
-    values = {c.key: c.match.value for c in must}
+    matches = {c.key: c.match for c in must}
     # security keys untouched
-    assert values["tenant_id"] == "t-1"
-    assert values["is_latest"] is True
-    assert values["is_deleted"] is False
+    assert matches["tenant_id"].value == "t-1"
+    assert matches["is_latest"].value is True
+    assert matches["is_deleted"].value is False
     # whitelisted extra filter AND-ed
-    assert values["doc_id"] == "d-9"
+    assert matches["doc_id"].value == "d-9"
     assert result.hits[0].doc_id == "d-0"  # fake store ignores filters
 
 

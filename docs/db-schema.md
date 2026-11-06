@@ -251,6 +251,24 @@ CREATE TABLE job_steps (
   COMMENT='任务步骤（F2 流水线逐步回写状态/耗时/产出）';
 ```
 
+### 3.10 audit_logs（阶段 3 · K1 落地，迁移 0003）
+
+```sql
+CREATE TABLE audit_logs (
+  id            CHAR(36)    NOT NULL                  COMMENT 'UUID',
+  tenant_id     CHAR(36)    NOT NULL                  COMMENT '租户（硬隔离，无 FK，历史不随租户删除）',
+  user_id       CHAR(36)    NOT NULL                  COMMENT '操作者（无 FK，同上）',
+  action        VARCHAR(64) NOT NULL                  COMMENT 'doc.upload / doc.meta_patch / doc.activate / doc.version_delete / doc.soft_delete / doc.reprocess / auth.login',
+  resource_type VARCHAR(32) NOT NULL                  COMMENT 'document / document_version / user',
+  resource_id   CHAR(36)    NOT NULL                  COMMENT '资源 ID（doc_id / version_id / user_id）',
+  detail        JSON        NULL                      COMMENT '动作载荷（变更字段 / 版本号 / job_id 等）',
+  created_at    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  KEY idx_audit_logs_tenant_created (tenant_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='审计日志（只增不改，写路径一行一动作；审计失败不阻断业务）';
+```
+
 ---
 
 ## 4. 索引说明（对应 plan.md §4.9）
@@ -302,6 +320,6 @@ CREATE TABLE job_steps (
 
 ## 7. 延后清单（MVP 不建，防范围蔓延）
 
-- 表：`chunking_strategies`（切分参数 MVP 硬编码 `chunk_size=512, overlap=50`）、`parsers`（解析器按 `file_type` 硬编码分派）、`permissions`、`audit_logs`（阶段 3）、`evaluation_runs`、`quality_checks`（阶段 4）。
+- 表：`chunking_strategies`（切分参数 MVP 硬编码 `chunk_size=512, overlap=50`）、`parsers`（解析器按 `file_type` 硬编码分派）、`permissions`（阶段 3 决议：role + access_level 覆盖场景，资源级 ACL 延后）、`evaluation_runs`、`quality_checks`（阶段 4）。~~`audit_logs`~~ 已于阶段 3 落地（见 §3.10）。
 - 索引：见 §4「延后索引」。
 - 版本/权限相关字段已在现有列中**留位**：`document_versions.valid_from/valid_to/is_deleted`、`documents.access_level/external_id`。

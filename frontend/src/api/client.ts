@@ -7,6 +7,7 @@
  * so pages only handle one rejection shape.
  */
 import axios, { AxiosError } from "axios";
+import { clearSession, getToken } from "../auth";
 
 const baseURL: string =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
@@ -36,6 +37,15 @@ export const http = axios.create({
   timeout: 120_000, // uploads + retrieval test can be slow on cold models
 });
 
+// K5: attach the bearer token to every request when a session exists.
+http.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 http.interceptors.response.use(
   (response) => {
     const body = response.data as ApiEnvelope<unknown>;
@@ -49,6 +59,18 @@ http.interceptors.response.use(
     return response.data as never;
   },
   (error: AxiosError<ApiEnvelope<unknown>>) => {
+    // K5: an expired/invalid session redirects to the login page (except on
+    // the login call itself, which surfaces its own error message).
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes("/auth/login")
+    ) {
+      clearSession();
+      const here = window.location.pathname + window.location.search;
+      if (window.location.pathname !== "/login") {
+        window.location.assign(`/login?next=${encodeURIComponent(here)}`);
+      }
+    }
     const body = error.response?.data;
     if (body && typeof body === "object" && "code" in body) {
       return Promise.reject(
@@ -66,6 +88,8 @@ const FRIENDLY: Record<string, string> = {
   ERR_VALIDATION: "输入有误，请检查后重试",
   ERR_NOT_FOUND: "资源不存在或已被删除",
   ERR_CONFLICT: "操作冲突：资源状态已变化",
+  ERR_UNAUTHORIZED: "登录已过期，请重新登录",
+  ERR_FORBIDDEN: "没有权限执行该操作",
   ERR_INTERNAL: "服务内部错误，请稍后重试",
   ERR_NETWORK: "网络异常：无法连接后端服务",
   ERR_FILE_TYPE: "不支持的文件类型",

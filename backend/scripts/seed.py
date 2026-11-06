@@ -16,10 +16,13 @@ and the E1 embedder stay consistent with the configured environment.
 
 from __future__ import annotations
 
+import os
+
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.deps import DEFAULT_TENANT_ID, DEFAULT_USER_ID
 from app.core.logging import setup_logging
+from app.core.security import hash_password
 from app.models import Datasource, EmbeddingModel, Tenant, User
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,6 +32,10 @@ setup_logging(level=settings.app.log_level)
 TENANT_NAME = "default"
 ADMIN_USERNAME = "admin"
 ADMIN_EMAIL = "admin@ragims.local"
+
+
+def _admin_password() -> str:
+    return os.environ.get("RAGIMS_ADMIN_PASSWORD", "admin123")
 
 
 def seed_tenant(session: Session) -> Tenant:
@@ -50,7 +57,13 @@ def seed_admin_user(session: Session, tenant_id: str) -> User:
         select(User).where(User.tenant_id == tenant_id, User.username == ADMIN_USERNAME)
     ).one_or_none()
     if user is not None:
-        print(f"= admin user exists: {user.id} ({user.username})")
+        # K2: backfill the password hash for pre-K2 installs (idempotent).
+        if user.password_hash is None:
+            user.password_hash = hash_password(_admin_password())
+            session.flush()
+            print(f"+ admin password set: {user.username}")
+        else:
+            print(f"= admin user exists: {user.id} ({user.username})")
         return user
     user = User(
         id=DEFAULT_USER_ID,
@@ -59,6 +72,7 @@ def seed_admin_user(session: Session, tenant_id: str) -> User:
         email=ADMIN_EMAIL,
         role="admin",
         status="active",
+        password_hash=hash_password(_admin_password()),
     )
     session.add(user)
     session.flush()

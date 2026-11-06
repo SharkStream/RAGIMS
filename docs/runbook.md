@@ -94,6 +94,24 @@ mc ls ragims/parsed-text/ | ForEach-Object { ... }   # 与 document_versions 比
 
 **误删恢复**：MinIO 无版本化（MVP），raw 对象删除不可恢复；parsed 文本可由 raw 重新解析生成（重跑 reprocess）。
 
+## 4.5 认证与密级（K2/K4）
+
+```powershell
+# 管理员密码（seed 幂等回填；仅对 password_hash 为空的用户设置）
+$env:RAGIMS_ADMIN_PASSWORD='<new>'; .\env\Scripts\python.exe scripts\seed.py
+
+# 强制登录（生产建议；dev 默认 False 匿名回退 stub）
+# backend/.env: SECURITY__AUTH_REQUIRED=true, SECURITY__TOKEN_SECRET=<32+ 字节随机串>
+
+# token 排查：401 = 过期/篡改/用户禁用；403 = 角色不在 WRITER_ROLES（admin/editor 可写）
+curl http://127.0.0.1:8000/api/auth/me -H "Authorization: Bearer <token>"
+```
+
+- token 无状态 12h；**改密/禁用立即生效**（role/tenant/status 每次请求查 users 行，不信任 token 内声明）。
+- 密级变更（`PATCH access_level`）同步 Qdrant 全版本点 payload；若后端日志出现 `access_level sync failed, rolled back`，MySQL 已回滚、重发请求即可。
+- 检索 403/查不到的常见原因：viewer 检索 confidential（按设计不可见）；检查 `documents.access_level` 与点 payload 一致（不一致说明历史数据未同步，reprocess 该文档可重建 payload）。
+- 审计：`GET /api/audit-logs?resource_id=<doc>` 定位「谁在何时做了什么」；写路径失败不阻断业务（仅 log）。
+
 ## 5. 常用命令速查
 
 ```powershell

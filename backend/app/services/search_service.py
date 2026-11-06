@@ -1,8 +1,10 @@
-"""Custom search service (G2 — retrieval test endpoint).
+"""Custom search service (G2 + K4 ACL).
 
-Enforces tenant isolation + ``is_latest`` + ``is_deleted=false`` HARD-CODED
-in the Qdrant filter — the caller can never relax them. Optional request
-filters are whitelisted AND-extra conditions only (never tenant/visibility).
+Enforces tenant isolation + ``is_latest`` + ``is_deleted=false`` + **role
+access-level whitelist** HARD-CODED in the Qdrant filter — the caller can
+never relax them. Optional request filters are whitelisted AND-extra
+conditions only, and a request ``access_level`` can only NARROW the role
+whitelist, never widen it.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from qdrant_client import models as qmodels
 
 from app.clients.embedder import BaseEmbedder, get_default_embedder
 from app.core.db import SessionLocal
+from app.core.permissions import ACCESS_LEVELS_BY_ROLE
 from app.services.storage import StorageService, get_storage
 
 #: Extra request filters allowed to be AND-ed on top of the mandatory ones.
@@ -43,21 +46,33 @@ class SearchTestResult:
     took_total_ms: float
 
 
-def _mandatory_filter(tenant_id: str) -> qmodels.Filter:
-    """Security-critical filter — never overridable by request input."""
-    return qmodels.Filter(
-        must=[
+def _mandatory_filter(
+    tenant_id: str, allowed_levels: tuple[str, ...] | None = None
+) -> qmodels.Filter:
+    """Security-critical filter — never overridable by request input.
+
+    ``allowed_levels`` (K4): role-based access-level whitelist; ``None`` keeps
+    the pre-K4 behaviour (no level constraint).
+    """
+    must: list[qmodels.FieldCondition | qmodels.MatchAny] = [
+        qmodels.FieldCondition(
+            key="tenant_id", match=qmodels.MatchValue(value=tenant_id)
+        ),
+        qmodels.FieldCondition(key="is_latest", match=qmodels.MatchValue(value=True)),
+        qmodels.FieldCondition(key="is_deleted", match=qmodels.MatchValue(value=False)),
+    ]
+    if allowed_levels is not None:
+        must.append(
             qmodels.FieldCondition(
-                key="tenant_id", match=qmodels.MatchValue(value=tenant_id)
-            ),
-            qmodels.FieldCondition(
-                key="is_latest", match=qmodels.MatchValue(value=True)
-            ),
-            qmodels.FieldCondition(
-                key="is_deleted", match=qmodels.MatchValue(value=False)
-            ),
-        ]
-    )
+                key="access_level", match=qmodels.MatchAny(any=list(allowed_levels))
+            )
+        )
+    return qmodels.Filter(must=must)
+
+
+def _role_allowed_levels(role: str) -> tuple[str, ...]:
+    """Whitelist for a role; unknown roles degrade to the viewer set."""
+    return ACCESS_LEVELS_BY_ROLE.get(role, ACCESS_LEVELS_BY_ROLE["viewer"])
 
 
 def _extend_filter(base: qmodels.Filter, filters: dict[str, Any]) -> qmodels.Filter:
@@ -77,15 +92,27 @@ def search_test(
     tenant_id: str,
     top_k: int = 10,
     filters: dict[str, Any] | None = None,
+    role: str = "admin",
     embedder: BaseEmbedder | None = None,
     storage: StorageService | None = None,
 ) -> SearchTestResult:
-    """Embed the query, search Qdrant under the hard tenant/version filter.
+    """Embed the query, search Qdrant under the hard tenant/ACL filter.
 
-    Returns hits + per-phase timings (acceptance 3).
+    Returns hits + per-phase timings (acceptance 3). ``role`` (K4) restricts
+    visibility via the access-level whitelist; a request ``access_level``
+    filter can only narrow it.
     """
     storage = storage or get_storage()
     emb = embedder
+
+    allowed = set(_role_allowed_levels(role))
+    requested_level = (filters or {}).get("access_level")
+    if requested_level is not None:
+        allowed &= (
+            {requested_level}
+            if isinstance(requested_level, str)
+            else set(requested_level)
+        )
 
     t0 = time.perf_counter()
     if emb is None:
@@ -95,7 +122,15 @@ def search_test(
     vector = emb.embed_batch([query])[0]
     took_embedding_ms = (time.perf_counter() - t0) * 1000.0
 
-    qfilter = _mandatory_filter(tenant_id)
+    if not allowed:  # narrowed away entirely → structurally empty result
+        return SearchTestResult(
+            hits=[],
+            took_embedding_ms=took_embedding_ms,
+            took_search_ms=0.0,
+            took_total_ms=took_embedding_ms,
+        )
+
+    qfilter = _mandatory_filter(tenant_id, allowed_levels=tuple(allowed))
     if filters:
         qfilter = _extend_filter(qfilter, filters)
 

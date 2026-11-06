@@ -644,12 +644,18 @@ def update_document_meta(
     tenant_id: str,
     doc_id: str,
     patch: DocumentPatchRequest,
+    *,
+    storage: StorageService | None = None,
 ) -> Document:
     """Metadata-only update (J3): touches ONE ``documents`` row.
 
     No job, no chunk rewrite, no re-embedding, no worker import. Deleted
     documents are immutable (409); ``null`` fields are skipped (no clearing
     of ``title``); ``tags`` replaces the whole list (``[]`` clears it).
+
+    K4: an ``access_level`` change also rewrites the level on ALL Qdrant
+    points of the document (flush → payload flip → commit, J4 semantics:
+    503 + rollback when Qdrant is unreachable).
     """
     doc = session.get(Document, doc_id)
     if doc is None or doc.tenant_id != tenant_id:
@@ -681,9 +687,52 @@ def update_document_meta(
                 f"datasource {fields['datasource_id']} not found in tenant {tenant_id}"
             )
 
-    for key, value in fields.items():
-        setattr(doc, key, value)
-    session.commit()
+    level_changed = "access_level" in fields and str(fields["access_level"]) != str(
+        doc.access_level
+    )
+
+    if not level_changed:
+        for key, value in fields.items():
+            setattr(doc, key, value)
+        session.commit()
+        logger.info(f"document meta updated: {doc.id} fields={sorted(fields)}")
+        return doc
+
+    storage = storage or get_storage()
+    new_level = str(fields["access_level"])
+    level_filter = qmodels.Filter(
+        must=[
+            qmodels.FieldCondition(
+                key="tenant_id", match=qmodels.MatchValue(value=tenant_id)
+            ),
+            qmodels.FieldCondition(
+                key="doc_id", match=qmodels.MatchValue(value=doc.id)
+            ),
+        ]
+    )
+    try:
+        for key, value in fields.items():
+            setattr(doc, key, value)
+        session.flush()  # staged; committed only after Qdrant agrees
+
+        # K4: the level is enforced at retrieval time from point payloads,
+        # so every version's points must carry the new value immediately.
+        storage.set_payload_by_filter({"access_level": new_level}, level_filter)
+        session.commit()
+    except AppError:
+        session.rollback()
+        raise
+    except Exception as exc:
+        session.rollback()  # MySQL stays untouched when Qdrant is down
+        logger.error(
+            f"access_level sync failed, rolled back: {type(exc).__name__}: {exc}"
+        )
+        raise AppError(
+            f"access_level sync failed: {type(exc).__name__}",
+            code=ERR_UNAVAILABLE,
+            status_code=503,
+            details={"doc_id": doc.id, "access_level": new_level},
+        ) from exc
     logger.info(f"document meta updated: {doc.id} fields={sorted(fields)}")
     return doc
 

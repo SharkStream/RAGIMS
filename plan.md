@@ -550,6 +550,32 @@ pending → running → success
 - 多租户权限系统
 - 审计日志
 
+## 阶段 3 增量（K7，已完成 ✅）：注册与用户管理 API
+
+> 阶段 3 落地时的决议：角色三档 + 密级覆盖了权限场景，但账号生命周期仍靠
+> CLI（`scripts/create_user.py`）/SQL。本增量把账号管理补成正式 API，全部
+> 写路径进审计。已实施（13 单测 + live 探针 10 步全过），任务卡见
+> `docs/mvp3/k7-user-management.md`。
+
+**任务：**
+
+- `POST /api/auth/users`（admin-only）：创建用户（username/password/role/tenant 可选）
+  - 密码强度校验（≥8 位 + 字符类别），pbkdf2 存储；重名 409 `ERR_CONFLICT`
+  - 审计 `auth.user_created`（detail: username/role/actor）
+- `GET /api/auth/users`（admin-only）：本租户用户列表（分页；不回传 password_hash）
+- `PATCH /api/auth/users/{id}`（admin-only）：改角色 / 重置密码 / 启用禁用
+  - 角色变更审计 `auth.role_changed`（detail: from→to，立即生效——role 每次请求查库）
+  - 重置密码审计 `auth.password_reset`（不记密码本身；使旧 token 保持有效但密码已换）
+  - 禁用审计 `auth.user_disabled`（该用户现有 token 立即 401，因 get_current_user 查 status）
+- **安全边界**：admin 不能禁用/降级自己（防锁死）；跨租户操作一律 404；
+  非 admin 访问 → 403（复用 K3 依赖风格，新增 `require_admin`）
+- 前端：设置页增加「用户管理」Tab（admin 可见；viewer/editor 隐藏）
+
+**交付物：**
+
+- 用户管理 API + 前端 Tab + 审计全覆盖
+- 验收：admin 建号 → 新用户登录 → 降级为 viewer → 写 403 → 禁用 → 登录 401，全程审计可查
+
 ## 阶段 4：质量与评估（2-3 周）
 
 **任务：**

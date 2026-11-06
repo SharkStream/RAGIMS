@@ -124,6 +124,19 @@ class OpenAISettings(BaseModel):
     timeout: float = 60.0
 
 
+class SecuritySettings(BaseModel):
+    """Auth/token settings (K2)."""
+
+    #: When False (dev/MVP default), requests without a Bearer token fall back
+    #: to the seeded admin identity — existing integrations keep working. Any
+    #: request that DOES carry a token is always strictly verified.
+    auth_required: bool = False
+    #: HMAC secret for token signing (env: SECURITY__TOKEN_SECRET).
+    token_secret: str = "dev-only-insecure-secret-change-me"
+    #: Token TTL in seconds (default 12h).
+    token_ttl_seconds: int = 12 * 3600
+
+
 class Settings(BaseSettings):
     """Top-level settings singleton."""
 
@@ -141,6 +154,7 @@ class Settings(BaseSettings):
     qdrant: QdrantSettings = Field(default_factory=QdrantSettings)
     minio: MinIOSettings = Field(default_factory=MinIOSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     @model_validator(mode="after")
     def _require_openai_api_key(self) -> Settings:
