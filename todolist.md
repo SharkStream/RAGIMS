@@ -330,6 +330,7 @@
 | M5 版本与增量 | 阶段 2 | 同名递增版本、回滚秒切、元数据零重嵌入（见 docs/mvp2/） |
 | M6 权限与多租户 | 阶段 3 | 登录 + 三档角色 + 密级 ACL + 审计（见 docs/mvp3/） |
 | M7 质量与评估 | 阶段 4 | 流水线质量三查 + 评估指标 + 质量看板（见 docs/mvp4/） |
+| M8 可观测与运维 | 阶段 5 | metrics/告警/监控大盘/备份（见 docs/mvp5/） |
 
 ---
 
@@ -391,3 +392,16 @@
 - [x] 新「监控」页：健康卡 + 任务统计 + 成本曲线
 ### M5. 备份恢复与验收
 - [x] scripts/backup.py（mysqldump + MinIO）+ 恢复步骤 + 文档收官
+
+## 阶段 N · 优化与扩展（plan.md 阶段 6 第一批，任务文档见 docs/mvp6/）
+
+### N1. Chat API（补齐 RAG 的 G）
+- [x] SSE 流式生成 + 引用溯源 + 拒答策略 + 前端对话页
+### N2. 混合检索 + Rerank
+- [ ] Qdrant sparse+dense RRF + LLM rerank + dense/hybrid/rerank ablation 报告
+### N3. 生成质量评估
+- [ ] faithfulness / answer relevancy（LLM-as-judge 自实现）接入评估引擎
+### N4. Guardrails
+- [ ] prompt injection 三层防护 + PII 脱敏 + per-user Redis 限流（429）
+### N5. Tracing 与收官
+- [ ] OpenTelemetry（可选依赖+开关）+ 告警 webhook + 探针 + 文档收官

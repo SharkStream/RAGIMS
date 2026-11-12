@@ -21,7 +21,18 @@ HTTP_REQUESTS: dict[tuple[str, str, str], int] = {}
 #: (method, route_template) -> [total_seconds, count]
 HTTP_DURATION: dict[tuple[str, str], list[float]] = {}
 
+#: "prompt"/"completion" -> tokens (N1 chat accounting)
+CHAT_TOKENS: dict[str, int] = {}
+
 _START = time.time()
+
+
+def record_chat_tokens(prompt_tokens: int, completion_tokens: int) -> None:
+    with _LOCK:
+        CHAT_TOKENS["prompt"] = CHAT_TOKENS.get("prompt", 0) + max(prompt_tokens, 0)
+        CHAT_TOKENS["completion"] = CHAT_TOKENS.get("completion", 0) + max(
+            completion_tokens, 0
+        )
 
 
 def record_request(method: str, route: str, status: int, seconds: float) -> None:
@@ -74,4 +85,10 @@ def render_http_metrics() -> list[str]:
     lines.append("# HELP ragims_process_uptime_seconds Process uptime.")
     lines.append("# TYPE ragims_process_uptime_seconds gauge")
     lines.append(f"ragims_process_uptime_seconds {uptime:.0f}")
+    lines.append("# HELP ragims_chat_tokens_total Chat tokens by kind.")
+    lines.append("# TYPE ragims_chat_tokens_total counter")
+    for kind in ("prompt", "completion"):
+        lines.append(
+            f'ragims_chat_tokens_total{{kind="{kind}"}} {CHAT_TOKENS.get(kind, 0)}'
+        )
     return lines

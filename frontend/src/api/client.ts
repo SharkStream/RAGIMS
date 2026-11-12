@@ -10,7 +10,11 @@ import axios, { AxiosError } from "axios";
 import { clearSession, getToken } from "../auth";
 
 const baseURL: string =
-  import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  "http://127.0.0.1:8000/api";
+
+/** Absolute API root for non-axios calls (N1 SSE chat via fetch). */
+export const API_BASE = baseURL.replace(/\/$/, "");
 
 export interface ApiEnvelope<T> {
   code: string;

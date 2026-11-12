@@ -608,13 +608,24 @@ pending → running → success
 
 ## 阶段 6：优化与扩展（持续）
 
-**任务：**
+> 2026-11 差距分析后的第一批排期（任务卡见 `docs/mvp6/`，代号 N1-N5），
+> 核心：补全 RAG 的「G」（生成）并以 ablation 实验驱动检索优化。
 
-- 混合检索、多模态
-- 图数据库、自动同步
-- 性能优化、成本优化
+| 任务 | 内容 | 状态 |
+| :-: | :-- | :-: |
+| N1 | **Chat API**：SSE 流式生成 + 引用溯源 + 拒答策略（补齐 RAG 的 G） | ⬜ |
+| N2 | **混合检索**（Qdrant sparse+dense RRF，零新服务）+ LLM rerank + ablation 对比报告 | ⬜ |
+| N3 | **生成质量评估**：faithfulness / answer relevancy（LLM-as-judge 自实现）接入评估引擎 | ⬜ |
+| N4 | **Guardrails**：prompt injection 三层防护 + PII 脱敏 + per-user Redis 限流 | ⬜ |
+| N5 | OpenTelemetry tracing（可选依赖+开关）+ 告警 webhook + 收官 | ⬜ |
+
+后续候补（本轮不排期）：语义切分 / 父子块、多模态（表格/图片 OCR）、数据源连接器同步、
+embedding 缓存、OpenSearch 全文、K8s 水平扩展压测。
 
 **交付物：**
+
+- 对话页（流式 + 引用溯源）+ ablation 优化报告
+- 双维评估（检索 + 生成）+ Guardrails 防护记录
 
 - 持续迭代
 

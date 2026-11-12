@@ -8,6 +8,7 @@
 import { ProLayout } from "@ant-design/pro-components";
 import {
   CloudUploadOutlined,
+  CommentOutlined,
   DashboardOutlined,
   FileTextOutlined,
   LogoutOutlined,
@@ -20,6 +21,7 @@ import {
 import { Dropdown } from "antd";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import ChatPage from "./pages/chat";
 import DocumentsPage from "./pages/documents";
 import JobsPage from "./pages/jobs";
 import LoginPage from "./pages/login";
@@ -92,6 +94,7 @@ export default function App() {
       }}
       menu={{
         request: async () => [
+          { path: "/chat", name: "对话", icon: <CommentOutlined /> },
           { path: "/documents", name: "文档", icon: <CloudUploadOutlined /> },
           { path: "/jobs", name: "任务", icon: <UnorderedListOutlined /> },
           { path: "/search-test", name: "检索测试", icon: <SearchOutlined /> },
@@ -117,7 +120,15 @@ export default function App() {
       <Routes>
         <Route
           path="/"
-          element={<Navigate to="/documents" replace />}
+          element={<Navigate to="/chat" replace />}
+        />
+        <Route
+          path="/chat"
+          element={
+            <RequireAuth>
+              <ChatPage />
+            </RequireAuth>
+          }
         />
         <Route
           path="/documents"
@@ -168,7 +179,7 @@ export default function App() {
           }
         />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/documents" replace />} />
+        <Route path="*" element={<Navigate to="/chat" replace />} />
       </Routes>
     </ProLayout>
   );

@@ -1,7 +1,7 @@
 /** Typed API calls — documents (C1/C2), jobs (G1), search (G2), stats (G3). */
 import { http } from "./client";
 
-export { http, ApiError, errorMessage } from "./client";
+export { http, ApiError, errorMessage, API_BASE } from "./client";
 
 // ---- shared shapes (mirror backend schemas) ----
 export interface DocumentOut {

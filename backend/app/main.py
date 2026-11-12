@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.audit import router as audit_router
 from app.api.auth import router as auth_router
+from app.api.chat import router as chat_router
 from app.api.costs import router as costs_router
 from app.api.datasources import router as datasources_router
 from app.api.documents import router as documents_router
@@ -77,6 +78,7 @@ async def _metrics_middleware(request: Request, call_next):  # noqa: ANN201
 app.include_router(health_router)
 app.include_router(documents_router, prefix=settings.app.api_prefix)
 app.include_router(auth_router, prefix=settings.app.api_prefix)
+app.include_router(chat_router, prefix=settings.app.api_prefix)
 app.include_router(audit_router, prefix=settings.app.api_prefix)
 app.include_router(datasources_router, prefix=settings.app.api_prefix)
 app.include_router(evaluations_router, prefix=settings.app.api_prefix)

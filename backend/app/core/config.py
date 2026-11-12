@@ -110,7 +110,7 @@ class MinIOSettings(BaseModel):
 
 
 class OpenAISettings(BaseModel):
-    """OpenAI embedding client."""
+    """OpenAI embedding + chat clients (N1 adds the chat model)."""
 
     api_key: str = Field(
         default="", description="OpenAI API key (env: OPENAI__API_KEY)"
@@ -121,7 +121,20 @@ class OpenAISettings(BaseModel):
     # Max texts per embeddings request. OpenAI allows ~2048, but DashScope-style
     # gateways cap at 25; keep a safe default for cross-provider compatibility.
     embedding_batch_size: int = 25
+    #: Chat model for RAG answer synthesis (N1; env: OPENAI__CHAT_MODEL).
+    chat_model: str = "gpt-4o-mini"
     timeout: float = 60.0
+
+
+class ChatSettings(BaseModel):
+    """RAG chat behavior (N1)."""
+
+    #: Chunks fed to the LLM as context (mirrors search top_k).
+    top_k: int = 5
+    #: History messages (user+assistant pairs) kept for multi-turn context.
+    max_history: int = 6
+    #: Streaming chunk timeout — LLMs can pause long between tokens.
+    stream_timeout: float = 120.0
 
 
 class SecuritySettings(BaseModel):
@@ -154,6 +167,7 @@ class Settings(BaseSettings):
     qdrant: QdrantSettings = Field(default_factory=QdrantSettings)
     minio: MinIOSettings = Field(default_factory=MinIOSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
+    chat: ChatSettings = Field(default_factory=ChatSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     @model_validator(mode="after")
