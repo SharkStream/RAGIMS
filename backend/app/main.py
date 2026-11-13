@@ -97,3 +97,8 @@ app.include_router(health_router, prefix=settings.app.api_prefix)
 
 # Unified error envelope for every route registered above and below.
 register_exception_handlers(app)
+
+# N5: optional OpenTelemetry instrumentation (no-op unless OTEL__ENABLED=true).
+from app.core.tracing import setup_tracing  # noqa: E402
+
+setup_tracing(app)

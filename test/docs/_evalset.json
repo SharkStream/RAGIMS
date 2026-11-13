@@ -1,0 +1,164 @@
+[
+ {
+  "query": "Python 是一种高级、通用、解释型的编程语言。由于它语法简单、像英语一样容易阅读，它目前是世界上最受欢迎、应用最广泛",
+  "expected_doc_ids": [
+   "835682c9-0b3c-4e65-9cdf-b4b3ba19105a"
+  ]
+ },
+ {
+  "query": "Python 作为英语单词，最核心的字面含义是“蟒蛇”或“巨蟒”（指一种大型蛇类）。",
+  "expected_doc_ids": [
+   "873c3853-c7ba-46f6-94c3-cb21dbc58d80"
+  ]
+ },
+ {
+  "query": "Java 是一种高级、面向对象、跨平台的编程语言。它由 Sun Microsystems 公司于 1995 年推出（后被",
+  "expected_doc_ids": [
+   "470c0bc9-3229-4d59-8d0b-478706995291"
+  ]
+ },
+ {
+  "query": "Java 核心学习步骤与资源：",
+  "expected_doc_ids": [
+   "31019e02-23df-4954-a64b-c433b0b58eb3"
+  ]
+ },
+ {
+  "query": "成为一名 AI 工程师（Artificial Intelligence Engineer） 需要融合传统软件工程能力与数",
+  "expected_doc_ids": [
+   "bbae53b6-8d0d-4f76-9391-741c90491af4"
+  ]
+ },
+ {
+  "query": "大学英语四级（CET-4）高效备考攻略",
+  "expected_doc_ids": [
+   "308fd999-0e9d-4044-8dd4-ae94e312cc8a"
+  ]
+ },
+ {
+  "query": "学习 Python 是一条非常平缓且回报率极高的路。对于高中生来说，Python 的语法像英语一样容易理解，非常适合用来",
+  "expected_doc_ids": [
+   "60079aee-9175-4fb1-ac6f-455e106e57a6"
+  ]
+ },
+ {
+  "query": "学习英语和学习 Python 编程语言有异曲同工之妙：它们都是一门交流工具，核心在于“输入（听/读）”与“输出（说/写）",
+  "expected_doc_ids": [
+   "817e14e3-3b2f-4674-9c58-4ee7ca6a7fd6"
+  ]
+ },
+ {
+  "query": "雅思考试高效通关全攻略（高中生定制版）",
+  "expected_doc_ids": [
+   "d879d597-0568-47ff-97e3-b014ccaee0e1"
+  ]
+ },
+ {
+  "query": "Python 学习全路线图 (Learning Roadmap)",
+  "expected_doc_ids": [
+   "30829c05-5520-4f51-9dbd-ade32777e1f5"
+  ]
+ },
+ {
+  "query": "雅思考试（IELTS）全方位拆解",
+  "expected_doc_ids": [
+   "e9710482-0333-4c74-919d-df20fd0bd068"
+  ]
+ },
+ {
+  "query": "30天雅思 4.0 到 6.0 极限通关攻略",
+  "expected_doc_ids": [
+   "0f129661-617b-47ff-9779-2426687cbc0e"
+  ]
+ },
+ {
+  "query": "什么是公司财报？(Financial Statements)",
+  "expected_doc_ids": [
+   "b9abbe5a-5406-4576-9bfa-de8fbc175d13"
+  ]
+ },
+ {
+  "query": "Python 全栈开发+AI实践 培训班课程大纲",
+  "expected_doc_ids": [
+   "2c87908c-727d-4c8c-b75c-39380ee68f28"
+  ]
+ },
+ {
+  "query": "我的公司 聚能创造 2027 财年第二季度财报摘要",
+  "expected_doc_ids": [
+   "c1763533-b84f-4907-bd42-f271ba053dd2"
+  ]
+ },
+ {
+  "query": "📑 深圳中青宝互动网络股份有限公司（ST中青宝）股东与高管薪酬明细",
+  "expected_doc_ids": [
+   "6c774af2-8656-4400-ba9b-6b55993d48ed"
+  ]
+ },
+ {
+  "query": "📊 深圳中青宝互动网络股份有限公司（ST中青宝）财务概况与股权穿透架构",
+  "expected_doc_ids": [
+   "58ec8a4c-66b8-4ab0-8f1e-f76beee610d6"
+  ]
+ },
+ {
+  "query": "📑 广西北流市潮汐文化娱乐有限公司 · 工商登记基本信息",
+  "expected_doc_ids": [
+   "e35d6fdd-e30c-41f2-ac37-37d1a42828a7"
+  ]
+ },
+ {
+  "query": "Python 人工智能（AI）开发工程师招聘要求",
+  "expected_doc_ids": [
+   "b8b5a576-cab9-4160-87c7-b73b7bdfd547"
+  ]
+ },
+ {
+  "query": "Python 开发工程师招聘岗位要求",
+  "expected_doc_ids": [
+   "49e1c902-212d-4ff0-aa40-3f0f735e5513"
+  ]
+ },
+ {
+  "query": "非本地毕业生留港／回港就业安排",
+  "expected_doc_ids": [
+   "e5fe1f67-df52-4026-a2b7-6e968010b126"
+  ]
+ },
+ {
+  "query": "优秀人才入境计划",
+  "expected_doc_ids": [
+   "cef49619-efa4-4e76-a80d-ca51dcebdb96"
+  ]
+ },
+ {
+  "query": "西安交通大学与香港理工大学合作举办信息管理硕士学位教育项目2026年度招生简章日期：2026-03-25    点击数：",
+  "expected_doc_ids": [
+   "1464f7ff-e70d-4807-9cae-f8033e4f9e44"
+  ]
+ },
+ {
+  "query": "合資格大學綜合名單 (排名不分先後)",
+  "expected_doc_ids": [
+   "4c2dd2d5-4a2b-4211-9988-4598a70cc39a"
+  ]
+ },
+ {
+  "query": "優秀人才入境計劃 **Quality Migrant Admission Scheme** 「 **STEM** 」科目參考名單",
+  "expected_doc_ids": [
+   "e5e9a8d3-7e30-4dde-89ab-2d54241041ed"
+  ]
+ },
+ {
+  "query": "以下是澳门大学人工智能硕士项目在**课程内容、上课时间、毕业要求**三个方面的信息整理。信息主要依据你提供的课表与项目官",
+  "expected_doc_ids": [
+   "861ec938-880e-42bf-8458-61561fdc9ae8"
+  ]
+ },
+ {
+  "query": "马来亚大学（UM）人工智能硕士（Master of Artificial Intelligence）",
+  "expected_doc_ids": [
+   "31896bf3-f44b-49b1-8b41-d88fe8f6e7c3"
+  ]
+ }
+]

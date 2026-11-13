@@ -398,10 +398,10 @@
 ### N1. Chat API（补齐 RAG 的 G）
 - [x] SSE 流式生成 + 引用溯源 + 拒答策略 + 前端对话页
 ### N2. 混合检索 + Rerank
-- [ ] Qdrant sparse+dense RRF + LLM rerank + dense/hybrid/rerank ablation 报告
+- [x] Qdrant sparse+dense RRF + LLM rerank + dense/hybrid/rerank ablation 报告（词法挑战 recall@5 0.625→0.9375）
 ### N3. 生成质量评估
-- [ ] faithfulness / answer relevancy（LLM-as-judge 自实现）接入评估引擎
+- [x] faithfulness / answer relevancy（LLM-as-judge 自实现）接入评估引擎
 ### N4. Guardrails
-- [ ] prompt injection 三层防护 + PII 脱敏 + per-user Redis 限流（429）
+- [x] prompt injection 三层防护 + PII 脱敏 + per-user Redis 限流（429）
 ### N5. Tracing 与收官
 - [ ] OpenTelemetry（可选依赖+开关）+ 告警 webhook + 探针 + 文档收官

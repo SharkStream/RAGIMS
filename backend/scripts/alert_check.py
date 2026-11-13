@@ -125,9 +125,38 @@ def _business_check(max_queue: int, max_rate: float, min_sample: int) -> dict[st
     }
 
 
+def _post_webhook(url: str, payload: dict[str, Any]) -> bool:
+    """POST the alert payload as JSON (generic; works with Slack-compatible relays)."""
+    import urllib.request
+
+    body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    req = urllib.request.Request(  # noqa: S310 — operator-supplied webhook URL
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+            return 200 <= resp.status < 300
+    except Exception as exc:  # noqa: BLE001 — notification failure != check failure
+        print(f"[alert-check] webhook failed: {type(exc).__name__}: {exc}")
+        return False
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="RAGIMS alert checker.")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--webhook",
+        default=None,
+        help="POST the JSON payload here when alerts fire (or with --always)",
+    )
+    parser.add_argument(
+        "--always",
+        action="store_true",
+        help="post the webhook even when healthy (heartbeat mode)",
+    )
     parser.add_argument("--max-queue", type=int, default=DEFAULT_MAX_QUEUE)
     parser.add_argument(
         "--max-failure-rate", type=float, default=DEFAULT_MAX_FAILURE_RATE
@@ -181,6 +210,10 @@ def main(argv: list[str]) -> int:
         for a in alerts:
             print(f"[ALERT] {a['code']}: {a['detail']}")
         print(f"[alert-check] status={payload['status']} ({len(alerts)} alert(s))")
+
+    if args.webhook and (alerts or args.always):
+        ok = _post_webhook(args.webhook, payload)
+        print(f"[alert-check] webhook {'sent' if ok else 'FAILED'} → {args.webhook}")
     return 1 if alerts else 0
 
 

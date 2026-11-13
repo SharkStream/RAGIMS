@@ -69,19 +69,34 @@ class QdrantVectorStore:
         name: str = COLLECTION_NAME,
         dimension: int | None = None,
         distance: qmodels.Distance = DEFAULT_DISTANCE,
+        *,
+        with_sparse: bool = False,
     ) -> str:
         """Create the collection if it does not exist; return its name.
 
-        Idempotent: repeated calls are a no-op once the collection exists.
-        Dimension defaults to the configured embedding model dimension
-        (settings.openai.embedding_dimension, e.g. 1024).
+        Idempotent: repeated calls are a no-op once the collection exists —
+        an existing single-dense collection is left as-is (use
+        ``scripts/migrate_hybrid.py`` to upgrade it to multi-vector).
+
+        ``with_sparse=True`` (N2) creates a **multi-vector** collection: a
+        named dense vector plus a named ``sparse`` vector index for hybrid
+        (RRF) retrieval. Dimension defaults to the configured embedding
+        model dimension (settings.openai.embedding_dimension, e.g. 1024).
         """
         dimension = dimension or settings.openai.embedding_dimension
+        dense_params = qmodels.VectorParams(size=dimension, distance=distance)
         if not self._client.collection_exists(name):
-            self._client.create_collection(
-                collection_name=name,
-                vectors_config=qmodels.VectorParams(size=dimension, distance=distance),
-            )
+            if with_sparse:
+                self._client.create_collection(
+                    collection_name=name,
+                    vectors_config={"dense": dense_params},
+                    sparse_vectors_config={"sparse": qmodels.SparseVectorParams()},
+                )
+            else:
+                self._client.create_collection(
+                    collection_name=name,
+                    vectors_config=dense_params,
+                )
         return name
 
     # -- points -------------------------------------------------------------
@@ -162,20 +177,59 @@ class QdrantVectorStore:
         top_k: int = 5,
         collection: str = COLLECTION_NAME,
         with_payload: bool = True,
+        sparse_vector: qmodels.SparseVector | None = None,
     ) -> list[qmodels.ScoredPoint]:
         """Cosine top-k search; ``query_filter`` is AND-ed on every result.
 
         G2 (检索测试接口) enforces tenant + ``is_latest`` + ``is_deleted=false``
         filtering by passing a composed :class:`qmodels.Filter` here.
 
+        ``sparse_vector`` given (N2 hybrid): runs a **two-prefetch RRF fusion**
+        query — dense and lexical candidates are fetched separately and fused
+        by reciprocal rank, still under the same mandatory filter.
+
         Uses the ``query_points`` API (``client.search`` was removed in newer
         qdrant-client releases).
         """
-        response = self._client.query_points(
-            collection_name=collection,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=top_k,
-            with_payload=with_payload,
-        )
+        if sparse_vector is not None:
+            response = self._client.query_points(
+                collection_name=collection,
+                prefetch=[
+                    qmodels.Prefetch(
+                        query=query_vector,
+                        using="dense",
+                        limit=top_k * 2,
+                        filter=query_filter,
+                    ),
+                    qmodels.Prefetch(
+                        query=sparse_vector,
+                        using="sparse",
+                        limit=top_k * 2,
+                        filter=query_filter,
+                    ),
+                ],
+                query=qmodels.FusionQuery(fusion=qmodels.Fusion.RRF),
+                limit=top_k,
+                with_payload=with_payload,
+            )
+            return response.points
+        try:
+            # Multi-vector collections (N2 migration) need the vector name.
+            response = self._client.query_points(
+                collection_name=collection,
+                query=query_vector,
+                using="dense",
+                query_filter=query_filter,
+                limit=top_k,
+                with_payload=with_payload,
+            )
+        except Exception:  # noqa: BLE001 — legacy single-vector collection
+            # fallback: unnamed dense query (pre-N2 collection shape)
+            response = self._client.query_points(
+                collection_name=collection,
+                query=query_vector,
+                query_filter=query_filter,
+                limit=top_k,
+                with_payload=with_payload,
+            )
         return response.points

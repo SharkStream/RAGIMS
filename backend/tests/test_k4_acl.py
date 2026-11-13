@@ -41,7 +41,10 @@ def _captured_levels(query_filter: qmodels.Filter) -> list[str] | None:
 def _fake_search_storage(capture: dict) -> MagicMock:
     storage = MagicMock()
     storage.vectors.search.side_effect = (
-        lambda vector, query_filter, top_k: capture.update(f=query_filter) or []
+        lambda vector, query_filter, top_k, sparse_vector=None: capture.update(
+            f=query_filter
+        )
+        or []
     )
     return storage
 

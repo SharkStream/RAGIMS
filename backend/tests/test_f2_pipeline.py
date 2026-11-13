@@ -77,7 +77,7 @@ def fake_embedder(dim: int = 4):
 
 def fake_storage(calls: list[str]):
     return SimpleNamespace(
-        ensure_vector_collection=lambda dimension=None: calls.append("ensure"),
+        ensure_vector_collection=lambda dimension=None, **kw: calls.append("ensure"),
         upsert_points=lambda points: calls.append(f"upsert:{len(points)}"),
         delete_points_by_filter=lambda query_filter: calls.append("delete"),
         set_payload_by_filter=lambda payload, query_filter: calls.append("demote"),

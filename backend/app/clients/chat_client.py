@@ -50,6 +50,31 @@ class ChatClient:
             timeout=timeout if timeout is not None else settings.chat.stream_timeout,
         )
 
+    def complete_chat(self, messages: list[dict[str, str]]) -> tuple[str, ChatUsage]:
+        """Non-streaming completion: (content, usage) in one call.
+
+        Used by N3's LLM-as-judge (needs the full text, not deltas) and any
+        batch/quality workflow where streaming adds no value.
+        """
+        started = time.perf_counter()
+        response = self._client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,  # type: ignore[arg-type]
+            temperature=0.0,
+        )
+        content = ""
+        if response.choices:
+            content = getattr(response.choices[0].message, "content", None) or ""
+        u = getattr(response, "usage", None)
+        usage = ChatUsage(
+            prompt_tokens=getattr(u, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(u, "completion_tokens", 0) or 0,
+            total_tokens=getattr(u, "total_tokens", 0) or 0,
+            model=self.model_name,
+            latency_ms=int((time.perf_counter() - started) * 1000),
+        )
+        return content, usage
+
     def stream_chat(self, messages: list[dict[str, str]]) -> Iterator[str | ChatUsage]:
         """Yield content deltas, then a final :class:`ChatUsage`.
 

@@ -7,9 +7,9 @@
 
 | 任务 | 文件 | 说明 | 状态 |
 | :-- | :--- | :-- | :-- |
-| N1 | [n1-chat-api.md](n1-chat-api.md) | **Chat API**：SSE 流式生成 + 引用溯源 + 拒答策略（把 RAG 的 G 补上） | ⬜ |
-| N2 | [n2-hybrid-rerank.md](n2-hybrid-rerank.md) | **混合检索**（Qdrant sparse+dense RRF 融合）+ LLM rerank + 用评估引擎跑 ablation 对比报告 | ⬜ |
-| N3 | [n3-generation-eval.md](n3-generation-eval.md) | **生成质量评估**：faithfulness / answer relevancy（LLM-as-judge，零依赖自实现）接入评估引擎 | ⬜ |
+| N1 | [n1-chat-api.md](n1-chat-api.md) | **Chat API**：SSE 流式生成 + 引用溯源 + 拒答策略（把 RAG 的 G 补上） | ✅ |
+| N2 | [n2-hybrid-rerank.md](n2-hybrid-rerank.md) | **混合检索**（Qdrant sparse+dense RRF 融合）+ LLM rerank + 用评估引擎跑 ablation 对比报告（见 [ablation.md](ablation.md)） | ✅ |
+| N3 | [n3-generation-eval.md](n3-generation-eval.md) | **生成质量评估**：faithfulness / answer relevancy（LLM-as-judge，零依赖自实现）接入评估引擎（迁移 0008） | ✅ |
 | N4 | [n4-guardrails.md](n4-guardrails.md) | Guardrails：prompt injection 防护 + PII 脱敏 + per-user 速率限制（Redis 计数） | ⬜ |
 | N5 | [n5-tracing-notify.md](n5-tracing-notify.md) | OpenTelemetry 全链路 tracing（可选依赖+开关）+ 告警 webhook 通知 + 收官 | ⬜ |
 

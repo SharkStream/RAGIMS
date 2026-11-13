@@ -19,12 +19,14 @@ from typing import Any
 
 from app.core.config import settings
 from app.core.metrics import record_request  # noqa: F401  (re-export convenience)
-from app.services.search_service import search_test
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ChatContext:
-    """One retrieved chunk prepared for the prompt + citations."""
+    """One retrieved chunk prepared for the prompt + citations.
+
+    Mutable by design (N4: guardrails may rewrite ``text`` in place).
+    """
 
     index: int  # 1-based citation number
     doc_id: str
@@ -38,10 +40,33 @@ class ChatContext:
 def build_chat_contexts(
     *, query: str, tenant_id: str, role: str, top_k: int
 ) -> list[ChatContext]:
-    """Retrieve with the caller's ACL; map hits to numbered contexts."""
-    result = search_test(query=query, tenant_id=tenant_id, top_k=top_k, role=role)
+    """Retrieve with the caller's ACL; map hits to numbered contexts.
+
+    N2: when ``RETRIEVAL__MODE=hybrid`` the search itself fuses sparse+dense
+    (RRF); when ``RETRIEVAL__RERANK=true`` the top hits are additionally
+    re-ordered by an LLM judge (degrades to original order on failure).
+    N5: a custom span wraps retrieval for the OTel trace tree.
+    """
+    from app.core.config import settings
+    from app.core.tracing import trace_span
+    from app.services.search_service import search_test
+
+    # rerank needs a wider candidate pool than the final context window
+    search_k = top_k
+    if settings.retrieval.rerank:
+        search_k = max(top_k, settings.retrieval.rerank_top_n)
+    with trace_span("ragims.chat.retrieval", {"top_k": search_k, "role": role}):
+        result = search_test(
+            query=query, tenant_id=tenant_id, top_k=search_k, role=role
+        )
+        hits = result.hits
+        if settings.retrieval.rerank and hits:
+            from app.services.rerank_service import rerank_hits
+
+            outcome = rerank_hits(query, hits, top_n=settings.retrieval.rerank_top_n)
+            hits = outcome.hits
     contexts: list[ChatContext] = []
-    for i, hit in enumerate(result.hits, start=1):
+    for i, hit in enumerate(hits[:top_k], start=1):
         contexts.append(
             ChatContext(
                 index=i,

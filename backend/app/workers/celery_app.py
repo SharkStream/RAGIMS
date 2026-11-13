@@ -46,3 +46,8 @@ celery_app.conf.update(
         "ragims.ingest_document": {"queue": "default", "routing_key": "default"},
     },
 )
+
+# N5: optional Celery instrumentation (no-op unless OTEL__ENABLED=true).
+from app.core.tracing import celery_instrument  # noqa: E402
+
+celery_instrument()

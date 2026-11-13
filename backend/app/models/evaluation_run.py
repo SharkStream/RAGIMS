@@ -41,6 +41,12 @@ class EvaluationRun(UUIDPkMixin, Base):
     #: Rerun lineage (L4.1): id of the run this one was derived from.
     #: Soft pointer on purpose — no FK, so runs can be cleaned up freely.
     parent_run_id: Mapped[str | None] = mapped_column(CHAR(36))
+    #: Retrieval mode benchmarked (N2 ablation): dense / hybrid / hybrid_rerank.
+    retrieval_mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="dense"
+    )
+    #: Evaluation dimension (N3): retrieval metrics or generation quality.
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="retrieval")
     dataset: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
     metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     result: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)

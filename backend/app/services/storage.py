@@ -59,6 +59,8 @@ class VectorStore(Protocol):
         name: str = COLLECTION_NAME,
         dimension: int | None = None,
         distance: qmodels.Distance = qmodels.Distance.COSINE,
+        *,
+        with_sparse: bool = False,
     ) -> str: ...
 
     def upsert_points(
@@ -95,6 +97,7 @@ class VectorStore(Protocol):
         top_k: int = 5,
         collection: str = COLLECTION_NAME,
         with_payload: bool = True,
+        sparse_vector: qmodels.SparseVector | None = None,
     ) -> list[qmodels.ScoredPoint]: ...
 
 
@@ -155,10 +158,13 @@ class StorageService:
     # -- vectors (Qdrant) ----------------------------------------------------
 
     def ensure_vector_collection(
-        self, dimension: int | None = None, name: str = COLLECTION_NAME
+        self,
+        dimension: int | None = None,
+        name: str = COLLECTION_NAME,
+        with_sparse: bool = False,
     ) -> str:
         """Idempotent collection creation; dimension defaults to settings."""
-        return self.vectors.ensure_collection(name, dimension)
+        return self.vectors.ensure_collection(name, dimension, with_sparse=with_sparse)
 
     def upsert_points(
         self,

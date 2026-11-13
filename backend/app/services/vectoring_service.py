@@ -59,9 +59,16 @@ def build_payload(doc: Document, version: DocumentVersion, chunk: Chunk) -> dict
 def build_point(
     doc: Document, version: DocumentVersion, chunk: Chunk, vector: list[float]
 ) -> qmodels.PointStruct:
+    """Point with named vectors (N2): dense embedding + lexical sparse."""
+    from app.core.config import settings
+    from app.services.sparse_service import sparse_vector
+
     return qmodels.PointStruct(
         id=point_id_for(version.id, chunk.chunk_index),
-        vector=vector,
+        vector={
+            "dense": vector,
+            "sparse": sparse_vector(chunk.text, dim=settings.retrieval.sparse_dim),
+        },
         payload=build_payload(doc, version, chunk),
     )
 
@@ -94,7 +101,9 @@ def upsert_doc_vectors(
         return []
 
     storage = storage or get_storage()
-    storage.ensure_vector_collection(dimension=len(vectors[0]))
+    # N2: points always carry named vectors (dense + sparse); the collection
+    # must be multi-vector even when retrieval runs in dense-only mode.
+    storage.ensure_vector_collection(dimension=len(vectors[0]), with_sparse=True)
 
     # J4 latest-pointer convergence: before a LATEST version's points go
     # live, demote any older points still carrying is_latest=true. This makes

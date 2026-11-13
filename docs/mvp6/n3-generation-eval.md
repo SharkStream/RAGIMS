@@ -23,10 +23,17 @@
 
 ## 验收标准
 
-- [ ] 同一数据集跑 generation 评估：faithfulness / relevancy 指标产出且人工抽查 judge 理由合理
-- [ ] 拒答用例被正确归类（refusal_rate 统计而非罚分）
-- [ ] 存量 retrieval 评估完全兼容（kind 默认值）
-- [ ] 门禁全绿 + live 探针
+- [x] 同一数据集跑 generation 评估：faithfulness / relevancy 指标产出且人工抽查 judge 理由合理（live：2 条真实问题，faithfulness 0.92/1.0 有区分度）
+- [x] 拒答用例被正确归类（refusal_rate 单列统计，live refusal_rate=1.0 对不可答问题）
+- [x] 存量 retrieval 评估完全兼容（kind 默认值，迁移 0008 server_default）
+- [x] 门禁全绿（pytest **380 passed**）+ live 探针（真 LLM judge 两条问题）
+
+## 已知调优点
+
+- judge 对**拒答回答**的 `answer_relevancy` 打分偏低（0.3-0.6）——与「拒答不罚分」意图不符；
+  需在 relevancy prompt 中显式豁免合理拒答（N4 一并微调）。
+- deepseek 对严格规则执行偏保守（有上下文仍偶发拒答语气）——`temperature=0.2` 与 prompt
+  措辞可继续调优。
 
 ## 关联任务
 

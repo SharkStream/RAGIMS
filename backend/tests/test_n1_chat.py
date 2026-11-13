@@ -124,7 +124,7 @@ def test_build_chat_contexts_passes_caller_role() -> None:
         captured["role"] = role
         return SimpleNamespace(hits=[_hit("d1", "text")])
 
-    with patch("app.services.chat_service.search_test", side_effect=fake_search):
+    with patch("app.services.search_service.search_test", side_effect=fake_search):
         ctxs = build_chat_contexts(query="q", tenant_id=TENANT, role="viewer", top_k=5)
     assert captured["role"] == "viewer"
     assert ctxs[0].doc_id == "d1"

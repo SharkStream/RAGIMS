@@ -32,6 +32,18 @@ def search_test_endpoint(
     body: SearchTestRequest,
     user: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> ApiResponse[SearchTestResponse]:
+    from app.core.errors import AppError
+    from app.core.ratelimit import RateLimitExceeded, check_rate_limit, limit_for
+
+    try:
+        check_rate_limit(user.id, "search", limit_for("search"))
+    except RateLimitExceeded as exc:
+        raise AppError(
+            f"检索过于频繁，请 {exc.retry_after} 秒后重试",
+            code="ERR_RATE_LIMITED",
+            status_code=429,
+        ) from exc
+
     result = search_test(
         query=body.query,
         tenant_id=user.tenant_id,

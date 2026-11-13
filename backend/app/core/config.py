@@ -137,6 +137,44 @@ class ChatSettings(BaseModel):
     stream_timeout: float = 120.0
 
 
+class RetrievalSettings(BaseModel):
+    """Retrieval mode (N2): dense-only vs hybrid (sparse+dense RRF) + rerank."""
+
+    #: "dense" (existing behavior) or "hybrid" (BM25-style sparse + dense RRF).
+    mode: str = "dense"
+    #: LLM pointwise rerank on top rerank_top_n hits (chat/test paths).
+    rerank: bool = False
+    rerank_top_n: int = 20
+    #: Sparse vector dimensionality (token → hashed index space).
+    sparse_dim: int = 65536
+
+
+class GuardrailsSettings(BaseModel):
+    """Input defenses (N4)."""
+
+    #: Strip known injection patterns + zero-width chars from chunk text.
+    sanitize_injection: bool = True
+    #: Redact PII (phone/id/email/bank-card) from query + contexts before LLM.
+    pii_redact: bool = False
+
+
+class RateLimitSettings(BaseModel):
+    """Per-user fixed-window rate limits (N4, Redis-backed)."""
+
+    enabled: bool = False
+    chat_per_min: int = 20
+    upload_per_min: int = 10
+    search_per_min: int = 30
+
+
+class OtelSettings(BaseModel):
+    """OpenTelemetry tracing (N5) — optional bundle, off by default."""
+
+    enabled: bool = False
+    endpoint: str = "http://localhost:4318/v1/traces"
+    service_name: str = "ragims"
+
+
 class SecuritySettings(BaseModel):
     """Auth/token settings (K2)."""
 
@@ -168,6 +206,10 @@ class Settings(BaseSettings):
     minio: MinIOSettings = Field(default_factory=MinIOSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
     chat: ChatSettings = Field(default_factory=ChatSettings)
+    retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
+    guardrails: GuardrailsSettings = Field(default_factory=GuardrailsSettings)
+    ratelimit: RateLimitSettings = Field(default_factory=RateLimitSettings)
+    otel: OtelSettings = Field(default_factory=OtelSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     @model_validator(mode="after")

@@ -50,7 +50,7 @@ class FakeVectorStore:
 
 def fake_storage(store: FakeVectorStore) -> SimpleNamespace:
     return SimpleNamespace(
-        ensure_vector_collection=lambda dimension=None: store.ensure_collection(
+        ensure_vector_collection=lambda dimension=None, **kw: store.ensure_collection(
             "documents", dimension
         ),
         upsert_points=lambda points: store.upsert_points(points, "documents"),
@@ -221,4 +221,7 @@ def test_point_payload_matches_point_id_index() -> None:
     for point, chunk in zip(store.upserted[0], chunks, strict=True):
         assert point.id == point_id_for("v1", chunk.chunk_index)
         assert point.payload["chunk_index"] == chunk.chunk_index
-        assert len(point.vector) == 8
+        # N2: named vectors — dense embedding + lexical sparse companion
+        assert set(point.vector) == {"dense", "sparse"}
+        assert len(point.vector["dense"]) == 8
+        assert len(point.vector["sparse"].indices) == len(point.vector["sparse"].values)

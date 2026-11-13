@@ -16,6 +16,7 @@ from typing import Any
 from qdrant_client import models as qmodels
 
 from app.clients.embedder import BaseEmbedder, get_default_embedder
+from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.permissions import ACCESS_LEVELS_BY_ROLE
 from app.services.storage import StorageService, get_storage
@@ -95,12 +96,14 @@ def search_test(
     role: str = "admin",
     embedder: BaseEmbedder | None = None,
     storage: StorageService | None = None,
+    mode: str | None = None,
 ) -> SearchTestResult:
     """Embed the query, search Qdrant under the hard tenant/ACL filter.
 
     Returns hits + per-phase timings (acceptance 3). ``role`` (K4) restricts
     visibility via the access-level whitelist; a request ``access_level``
-    filter can only narrow it.
+    filter can only narrow it. ``mode`` (N2) overrides
+    ``settings.retrieval.mode`` per call — dense | hybrid (ablation).
     """
     storage = storage or get_storage()
     emb = embedder
@@ -135,7 +138,15 @@ def search_test(
         qfilter = _extend_filter(qfilter, filters)
 
     t1 = time.perf_counter()
-    points = storage.vectors.search(vector, query_filter=qfilter, top_k=top_k)
+    effective_mode = mode or settings.retrieval.mode
+    sparse_vec = None
+    if effective_mode == "hybrid":
+        from app.services.sparse_service import sparse_vector
+
+        sparse_vec = sparse_vector(query, dim=settings.retrieval.sparse_dim)
+    points = storage.vectors.search(
+        vector, query_filter=qfilter, top_k=top_k, sparse_vector=sparse_vec
+    )
     took_search_ms = (time.perf_counter() - t1) * 1000.0
 
     hits: list[SearchHit] = []

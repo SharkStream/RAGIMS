@@ -87,6 +87,17 @@ def upload(
     ] = None,
     title: Annotated[str | None, Form(description="optional display title")] = None,
 ) -> ApiResponse[DocumentUploadResponse]:
+    from app.core.errors import AppError
+    from app.core.ratelimit import RateLimitExceeded, check_rate_limit, limit_for
+
+    try:
+        check_rate_limit(user.id, "upload", limit_for("upload"))
+    except RateLimitExceeded as exc:
+        raise AppError(
+            f"上传过于频繁，请 {exc.retry_after} 秒后重试",
+            code="ERR_RATE_LIMITED",
+            status_code=429,
+        ) from exc
     """Validate → hash → persist + MinIO → enqueue ingestion job."""
     filename = file.filename or "unnamed"
     cap = _READ_CAP_MB * 1024 * 1024

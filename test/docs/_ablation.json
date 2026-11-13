@@ -1,0 +1,38 @@
+[
+ {
+  "mode": "dense",
+  "metrics": {
+   "queries": 27,
+   "top_k": 5,
+   "retrieval_mode": "dense",
+   "recall@k": 1.0,
+   "mrr": 1.0,
+   "ndcg@k": 1.0,
+   "hit_rate": 1.0
+  }
+ },
+ {
+  "mode": "hybrid",
+  "metrics": {
+   "queries": 27,
+   "top_k": 5,
+   "retrieval_mode": "hybrid",
+   "recall@k": 1.0,
+   "mrr": 1.0,
+   "ndcg@k": 1.0,
+   "hit_rate": 1.0
+  }
+ },
+ {
+  "mode": "hybrid_rerank",
+  "metrics": {
+   "queries": 27,
+   "top_k": 5,
+   "retrieval_mode": "hybrid_rerank",
+   "recall@k": 1.0,
+   "mrr": 0.9815,
+   "ndcg@k": 0.9863,
+   "hit_rate": 1.0
+  }
+ }
+]

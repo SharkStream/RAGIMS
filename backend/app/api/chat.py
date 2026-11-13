@@ -26,12 +26,16 @@ from pydantic import BaseModel, Field
 
 from app.clients.chat_client import get_chat_client
 from app.core.deps import CurrentUser, get_current_user
+from app.core.errors import AppError
 from app.core.metrics import record_chat_tokens
+from app.core.ratelimit import RateLimitExceeded, check_rate_limit, limit_for
+from app.core.tracing import trace_span
 from app.services.chat_service import (
     build_chat_contexts,
     build_messages,
     citations_of,
 )
+from app.services.guardrails import guard_chunk_text, guard_query
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -60,15 +64,28 @@ def chat(
     body: ChatRequest,
     user: Annotated[CurrentUser, Depends(get_current_user)],
 ) -> StreamingResponse:
+    # N4: per-user rate limit (429 before any LLM/retrieval work).
+    try:
+        check_rate_limit(user.id, "chat", limit_for("chat"))
+    except RateLimitExceeded as exc:
+        raise AppError(
+            f"操作过于频繁，请 {exc.retry_after} 秒后重试",
+            code="ERR_RATE_LIMITED",
+            status_code=429,
+        ) from exc
+
+    # N4: PII redaction on the query (config-gated).
+    query = guard_query(body.query)
     contexts = build_chat_contexts(
-        query=body.query,
+        query=query,
         tenant_id=user.tenant_id,
         role=user.role,
         top_k=settings_chat_top_k(),
     )
-    messages = build_messages(
-        body.query, contexts, [m.model_dump() for m in body.history]
-    )
+    # N4: sanitize retrieved chunk texts (injection patterns) before prompt.
+    for c in contexts:
+        c.text = guard_chunk_text(c.text)
+    messages = build_messages(query, contexts, [m.model_dump() for m in body.history])
     conversation_id = body.conversation_id
     client = get_chat_client()
 
@@ -76,19 +93,23 @@ def chat(
         answer_parts: list[str] = []
         usage_payload: dict = {}
         try:
-            for piece in client.stream_chat(messages):
-                if isinstance(piece, str):
-                    answer_parts.append(piece)
-                    yield _sse("token", {"delta": piece})
-                else:
-                    usage_payload = {
-                        "prompt_tokens": piece.prompt_tokens,
-                        "completion_tokens": piece.completion_tokens,
-                        "total_tokens": piece.total_tokens,
-                        "model": piece.model,
-                        "latency_ms": piece.latency_ms,
-                    }
-                    record_chat_tokens(piece.prompt_tokens, piece.completion_tokens)
+            with trace_span(
+                "ragims.chat.generation",
+                {"model": client.model_name, "contexts": len(contexts)},
+            ):
+                for piece in client.stream_chat(messages):
+                    if isinstance(piece, str):
+                        answer_parts.append(piece)
+                        yield _sse("token", {"delta": piece})
+                    else:
+                        usage_payload = {
+                            "prompt_tokens": piece.prompt_tokens,
+                            "completion_tokens": piece.completion_tokens,
+                            "total_tokens": piece.total_tokens,
+                            "model": piece.model,
+                            "latency_ms": piece.latency_ms,
+                        }
+                        record_chat_tokens(piece.prompt_tokens, piece.completion_tokens)
             done: dict = {
                 "answer": "".join(answer_parts),
                 "citations": citations_of(contexts),

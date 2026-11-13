@@ -1,0 +1,114 @@
+[
+ {
+  "query": "IELTS",
+  "expected_doc_ids": [
+   "e9710482-0333-4c74-919d-df20fd0bd068"
+  ],
+  "token": "IELTS"
+ },
+ {
+  "query": "TRUE",
+  "expected_doc_ids": [
+   "0f129661-617b-47ff-9779-2426687cbc0e"
+  ],
+  "token": "TRUE"
+ },
+ {
+  "query": "B2C",
+  "expected_doc_ids": [
+   "2c87908c-727d-4c8c-b75c-39380ee68f28"
+  ],
+  "token": "B2C"
+ },
+ {
+  "query": "AICPA",
+  "expected_doc_ids": [
+   "6c774af2-8656-4400-ba9b-6b55993d48ed"
+  ],
+  "token": "AICPA"
+ },
+ {
+  "query": "K8s",
+  "expected_doc_ids": [
+   "b8b5a576-cab9-4160-87c7-b73b7bdfd547"
+  ],
+  "token": "K8s"
+ },
+ {
+  "query": "PEP8",
+  "expected_doc_ids": [
+   "49e1c902-212d-4ff0-aa40-3f0f735e5513"
+  ],
+  "token": "PEP8"
+ },
+ {
+  "query": "STEM",
+  "expected_doc_ids": [
+   "cef49619-efa4-4e76-a80d-ca51dcebdb96"
+  ],
+  "token": "STEM"
+ },
+ {
+  "query": "CET4",
+  "expected_doc_ids": [
+   "1464f7ff-e70d-4807-9cae-f8033e4f9e44"
+  ],
+  "token": "CET4"
+ },
+ {
+  "query": "UBA",
+  "expected_doc_ids": [
+   "4c2dd2d5-4a2b-4211-9988-4598a70cc39a"
+  ],
+  "token": "UBA"
+ },
+ {
+  "query": "STEM",
+  "expected_doc_ids": [
+   "e5e9a8d3-7e30-4dde-89ab-2d54241041ed"
+  ],
+  "token": "STEM"
+ },
+ {
+  "query": "CISC7026",
+  "expected_doc_ids": [
+   "861ec938-880e-42bf-8458-61561fdc9ae8"
+  ],
+  "token": "CISC7026"
+ },
+ {
+  "query": "JVM",
+  "expected_doc_ids": [
+   "470c0bc9-3229-4d59-8d0b-478706995291"
+  ],
+  "token": "JVM"
+ },
+ {
+  "query": "JDK",
+  "expected_doc_ids": [
+   "31019e02-23df-4954-a64b-c433b0b58eb3"
+  ],
+  "token": "JDK"
+ },
+ {
+  "query": "CET",
+  "expected_doc_ids": [
+   "308fd999-0e9d-4044-8dd4-ae94e312cc8a"
+  ],
+  "token": "CET"
+ },
+ {
+  "query": "BBC",
+  "expected_doc_ids": [
+   "817e14e3-3b2f-4674-9c58-4ee7ca6a7fd6"
+  ],
+  "token": "BBC"
+ },
+ {
+  "query": "IELTS",
+  "expected_doc_ids": [
+   "d879d597-0568-47ff-97e3-b014ccaee0e1"
+  ],
+  "token": "IELTS"
+ }
+]

@@ -337,7 +337,9 @@ class RecordingVectorStore:
         self.deleted_filters: list = []
         self.searches: list[dict] = []
 
-    def ensure_collection(self, name="documents", dimension=None, distance=None):
+    def ensure_collection(
+        self, name="documents", dimension=None, distance=None, *, with_sparse=False
+    ):
         return name
 
     def upsert_points(self, points, collection="documents", wait=True):
@@ -354,6 +356,7 @@ class RecordingVectorStore:
         top_k=5,
         collection="documents",
         with_payload=True,
+        sparse_vector=None,
     ):
         self.searches.append({"vector": query_vector, "top_k": top_k})
         return []

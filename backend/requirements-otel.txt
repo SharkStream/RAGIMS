@@ -1,0 +1,9 @@
+# OpenTelemetry optional bundle (N5) — install only when tracing is enabled:
+#   pip install -r requirements-otel.txt
+# The app runs normally WITHOUT these (app/core/tracing.py is a no-op then).
+opentelemetry-sdk>=1.24.0
+opentelemetry-api>=1.24.0
+opentelemetry-exporter-otlp-proto-http>=1.24.0
+opentelemetry-instrumentation-fastapi>=0.45b0
+opentelemetry-instrumentation-celery>=0.45b0
+opentelemetry-instrumentation-sqlalchemy>=0.45b0
