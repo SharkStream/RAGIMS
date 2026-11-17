@@ -404,4 +404,4 @@
 ### N4. Guardrails
 - [x] prompt injection 三层防护 + PII 脱敏 + per-user Redis 限流（429）
 ### N5. Tracing 与收官
-- [ ] OpenTelemetry（可选依赖+开关）+ 告警 webhook + 探针 + 文档收官
+- [x] OpenTelemetry（可选依赖+开关）+ 告警 webhook + 探针 + 文档收官

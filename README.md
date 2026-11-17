@@ -2,7 +2,7 @@
 
 RAG Ingestion Management System — 文档摄取与向量化管理系统。上传 pdf/docx/txt → 解析/清洗/切分 → 向量化 → 入库 Qdrant，配套任务看板、检索测试、版本管理、多租户权限（登录/角色/密级/审计）与设置页面。
 
-**当前进度：plan.md 前五个阶段全部完成 ✅**（MVP1 摄取主链路 → MVP2 版本与增量 → MVP3 权限与多租户 → 阶段 4 质量与评估 → 阶段 5 可观测与运维）；剩余：阶段 6 · 优化与扩展（持续迭代）。
+**当前进度：plan.md 六个阶段全部完成 ✅**（MVP1 摄取主链路 → MVP2 版本与增量 → MVP3 权限与多租户 → 阶段 4 质量与评估 → 阶段 5 可观测与运维 → 阶段 6 优化与扩展第一批 N1-N5）；系统已是**完整 RAG**（问答流式生成 + 引用溯源 + 混合检索 + 双维评估 + 护栏）。
 
 ## 架构（MVP 已实现）
 
@@ -36,6 +36,7 @@ MySQL 8 元数据 · MinIO 原始/解析文本 · Qdrant 向量
 | MVP3 | K1–K6 | 权限与多租户 | 审计日志（7 类写路径 + 查询 API）/ 真实登录（HMAC token + pbkdf2）/ 三档角色 403 / 检索密级白名单 + PATCH 即时同步 / 前端登录与角色感知 UI | [docs/mvp3](./docs/mvp3/README.md) |
 | 阶段 4 | L1–L5 | 质量与评估 | 流水线质量检查（空块率/重复率/长度离散，finalize 自动）+ 评估引擎（recall@k/MRR/nDCG@k/hit_rate，文档级排名）+ 质量看板第五页 + 结果人工审核 | [docs/mvp4](./docs/mvp4/README.md) |
 | 阶段 5 | M1–M5 | 可观测与运维 | `/api/metrics` Prometheus 指标（零依赖）+ token 成本统计 + `/health/detail` 与告警脚本 + 监控大盘第六页 + 备份恢复脚本 | [docs/mvp5](./docs/mvp5/README.md) |
+| 阶段 6 | N1–N5 | 优化与扩展（第一批） | **Chat API**（SSE 流式 + `[n]` 引用溯源 + 拒答策略）+ **混合检索**（Qdrant sparse+dense RRF，词法 recall@5 **0.625→0.9375**）+ LLM rerank + **生成质量评估**（faithfulness/relevancy/refusal_rate）+ **Guardrails**（注入三层防护 + PII + 限流）+ OTel tracing（可选）+ 告警 webhook | [docs/mvp6](./docs/mvp6/README.md) |
 
 ### 安全模型（MVP3 落地）
 
@@ -50,7 +51,23 @@ POST /api/auth/login（pbkdf2，错密码/未知/禁用统一 401 防枚举）
 ```
 
 - 渐进开关：`SECURITY__AUTH_REQUIRED=false`（dev 默认）时无 token 回退 stub admin，**带 token 恒严格校验**；生产置 `true` 全强制。
-- 数据：MySQL 现为 **12 张表**（迁移 0001–0006；0003 `audit_logs`、0004 `users.password_hash`、0005 `quality_checks`+`evaluation_runs`、0006 `evaluation_runs.parent_run_id`）。
+- 数据：MySQL 现为 **12 张表**（迁移 0001–0008；0003 `audit_logs`、0004 `users.password_hash`、0005 `quality_checks`+`evaluation_runs`、0006 `evaluation_runs.parent_run_id`、0007 `retrieval_mode`、0008 `kind`）。
+
+### RAG 问答与护栏（阶段 6 第一批）
+
+```
+POST /api/chat（SSE）
+  → 护栏：PII 脱敏（可选）+ per-user 限流（429，Redis 故障降级放行）
+  → 检索（与 /search/test 同一路径，继承 4 条强制过滤）
+        dense 或 hybrid（sparse+dense RRF）＋可选 LLM rerank
+  → 上下文注入清洗（中和「忽略以上指令」等模式 + 剥离零宽字符 + 伪造 ctx 标签）
+  → system 规则：仅依据上下文作答、不足明确拒答、回答带 [n] 引用
+  → 流式 token → done{answer, citations, usage}
+```
+
+- **Ablation 结论**（27 文档实测）：hybrid 对语义查询无损、对**词法查询（编号/缩写）recall@5 0.625 → 0.9375（+50%）**；rerank 默认关闭（easy case 会引入轻微波动）。
+- **双维评估**：`kind=retrieval`（recall@k/MRR/nDCG@k/hit_rate）+ `kind=generation`（faithfulness/answer_relevancy/refusal_rate，LLM-as-judge 自实现，零新依赖）。
+- **可选 tracing**：`pip install -r requirements-otel.txt` 后置 `OTEL__ENABLED=true`（默认关，零开销）。
 
 ## 快速开始：克隆后把系统跑起来（约 10 分钟）
 
@@ -177,6 +194,6 @@ pnpm dev                # http://localhost:5173
 
 ## 质量与 CI
 
-- 后端门禁：`pytest`（**354 单测** + marker-gated 真栈集成 `test_i1/test_j/test_k_integration.py`，`RAGIMS_INTEGRATION=1` 运行）、`ruff`、`black`、`mypy`；前端 `tsc --noEmit`。
+- 后端门禁：`pytest`（**400 单测** + marker-gated 真栈集成 `test_i1/test_j/test_k_integration.py`，`RAGIMS_INTEGRATION=1` 运行）、`ruff`、`black`、`mypy`；前端 `tsc --noEmit`。
 - CI：`.github/workflows/ci.yml`（lint + test + 覆盖率 ≥70%，前端 typecheck + build）。
 - 验收探针（阶段收官时跑通，验收后可删）：`backend/scripts/_j*_tmp.py`、`_k6e2e_tmp.py`。

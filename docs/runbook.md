@@ -142,6 +142,7 @@ alembic upgrade head                       # 迁移
 .\env\Scripts\python.exe scripts\init_qdrant.py
 .\env\Scripts\python.exe scripts\reconcile.py
 .\env\Scripts\python.exe scripts\alert_check.py          # M3 告警检查（可挂 cron，exit 1=有告警）
+.\env\Scripts\python.exe scripts\alert_check.py --webhook http://<hook>   # N5 告警时推 JSON（--always 心跳）
 .\env\Scripts\python.exe scripts\cleanup.py --dry-run    # 清空业务数据预览
 
 # 质量门禁
@@ -156,6 +157,28 @@ $env:RAGIMS_INTEGRATION='1'; pytest tests\test_i1_integration.py -q    # 真栈�
 ```
 GET /api/metrics     # Prometheus 文本格式（无鉴权，仅聚合统计）
 ```
+
+## 5.5 对话与护栏配置（N1/N4/N5）
+
+```powershell
+# backend/.env 关键项
+OPENAI__CHAT_MODEL=deepseek-v4.1-flash   # 必须是网关实际支持的 chat 模型
+CHAT__TOP_K=5
+RETRIEVAL__MODE=dense                    # 生产建议 hybrid（N2 实测词法召回 +50%）
+RETRIEVAL__RERANK=false                  # 打开需接受 +1 次 LLM 往返延迟
+GUARDRAILS__SANITIZE_INJECTION=true      # 注入清洗
+GUARDRAILS__PII_REDACT=false             # 合规场景置 true
+RATELIMIT__ENABLED=false                 # 生产置 true，按 *_PER_MIN 调阈值
+OTEL__ENABLED=false                      # 打开前先 pip install -r requirements-otel.txt
+OTEL__ENDPOINT=http://localhost:4318/v1/traces
+```
+
+排障要点：
+- chat 报 `Model not exist`：`OPENAI__CHAT_MODEL` 不在网关模型列表（`client.models.list()` 自查）。
+- chat 偶发「根据现有知识库内容无法回答」：先确认检索命中是否相关（`/search/test`）；
+  chunk 过碎属切分质量（语义切分/父子块在后续候补）。
+- 429 `ERR_RATE_LIMITED`：限流触发；Redis 不可用时会**降级放行**并打 warning。
+- 注入样例进库后仍被模型服从：确认 `GUARDRAILS__SANITIZE_INJECTION=true` 且 worker 已重启（摄取时写入的文本在检索时清洗）。
 
 ## 6. 紧急预案
 
